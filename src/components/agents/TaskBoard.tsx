@@ -2,29 +2,29 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { api } from '@/convex/_generated/api'
-import { Id } from '@/convex/_generated/dataModel'
-import { TaskStatus } from '@/convex/schema'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { api } from '../../convex/_generated/api'
+import { Id } from '../../convex/_generated/dataModel'
+import { TaskStatus } from '../../convex/schema'
+import { Card, CardContent } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { ScrollArea } from '../../components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+} from '../../components/ui/dialog'
+import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '../../components/ui/select'
 import { Calendar, ArrowRightLeft, Plus } from 'lucide-react'
 
 const COLUMNS: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'blocked', 'done']

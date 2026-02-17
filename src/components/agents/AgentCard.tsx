@@ -1,11 +1,11 @@
 // src/components/agents/AgentCard.tsx
 
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/convex/_generated/api'
-import { Id } from '@/convex/_generated/dataModel'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Activity, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { api } from '../../convex/_generated/api'
+import { Id } from '../../convex/_generated/dataModel'
+import { Card, CardContent } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Activity, Clock, AlertCircle } from 'lucide-react'
 
 interface AgentCardProps {
   agent: any

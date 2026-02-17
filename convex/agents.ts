@@ -3,7 +3,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { agentIdValidator, taskStatusValidator, priorityValidator, AGENT_IDS } from "./schema";
-import { getAuthUserId } from "@convex-dev/auth/server";
 
 // ========== AGENT DEFINITIONS ==========
 
@@ -216,6 +215,17 @@ export const getRecentActivity = query({
       .take(args.limit || 50);
   },
 });
+
+// Helper to get authenticated user
+async function getAuthUserId(ctx: any): Promise<any | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+  const user = await ctx.db
+    .query("users")
+    .withIndex("clerkId", (q: any) => q.eq("clerkId", identity.subject))
+    .unique();
+  return user?._id ?? null;
+}
 
 // ========== MUTATIONS ==========
 
