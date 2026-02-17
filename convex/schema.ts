@@ -622,6 +622,79 @@ const schema = defineSchema({
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])
     .index("orgId_timestamp", ["orgId", "timestamp"]),
+
+  // Agent chat messages (for in-app chat)
+  agentChatMessages: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    userId: v.id("users"),
+    content: v.string(),
+    role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
+    sessionId: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("delivered"), v.literal("responded")),
+    replyTo: v.optional(v.id("agentChatMessages")),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("orgId_agentId", ["orgId", "agentId"])
+    .index("sessionId", ["sessionId"])
+    .index("timestamp", ["timestamp"]),
+
+  // Chat queue (for processing agent responses)
+  agentChatQueue: defineTable({
+    orgId: v.id("organizations"),
+    messageId: v.id("agentChatMessages"),
+    agentId: agentIdValidator,
+    userId: v.id("users"),
+    status: v.union(v.literal("queued"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    attempts: v.number(),
+    queuedAt: v.number(),
+    processedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("agentId", ["agentId"]),
+
+  // Chat sessions (conversations between user and agent)
+  agentChatSessions: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    userId: v.id("users"),
+    sessionId: v.string(),
+    status: v.union(v.literal("active"), v.literal("closed")),
+    startedAt: v.number(),
+    lastActivityAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("orgId_agentId_userId", ["orgId", "agentId", "userId"])
+    .index("sessionId", ["sessionId"]),
+
+  // Processing queue (for OpenClaw Gateway integration)
+  agentProcessingQueue: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    sessionId: v.string(),
+    task: v.string(),
+    context: v.optional(v.any()),
+    source: v.union(v.literal("discord"), v.literal("web")),
+    channelId: v.optional(v.string()),
+    status: v.union(v.literal("queued"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    queuedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    attempts: v.number(),
+    error: v.optional(v.string()),
+  })
+    .index("orgId", ["orgId"])
+    .index("status", ["status"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("agentId", ["agentId"])
+    .index("sessionId", ["sessionId"]),
 });
 
 export default schema;
