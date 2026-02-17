@@ -93,6 +93,80 @@ export const jobStatusValidator = v.union(
 );
 export type JobStatus = Infer<typeof jobStatusValidator>;
 
+// AGENT SYSTEM - Multi-agent task management
+export const AGENT_IDS = {
+  LARRY: "larry",
+  LEXI: "lexi",
+  MAYA: "maya",
+  OLIVER: "oliver",
+  SAM: "sam",
+  FIONA: "fiona",
+  CARL: "carl",
+  TAYLOR: "taylor",
+  DANA: "dana",
+} as const;
+
+export const agentIdValidator = v.union(
+  v.literal(AGENT_IDS.LARRY),
+  v.literal(AGENT_IDS.LEXI),
+  v.literal(AGENT_IDS.MAYA),
+  v.literal(AGENT_IDS.OLIVER),
+  v.literal(AGENT_IDS.SAM),
+  v.literal(AGENT_IDS.FIONA),
+  v.literal(AGENT_IDS.CARL),
+  v.literal(AGENT_IDS.TAYLOR),
+  v.literal(AGENT_IDS.DANA),
+);
+export type AgentId = Infer<typeof agentIdValidator>;
+
+export const AGENT_DEPARTMENTS = {
+  SALES: "sales",
+  OPS: "ops",
+  FINANCE: "finance",
+  DELIVERY: "delivery",
+} as const;
+
+export const TASK_STATUSES = {
+  BACKLOG: "backlog",
+  TODO: "todo",
+  IN_PROGRESS: "in_progress",
+  REVIEW: "review",
+  BLOCKED: "blocked",
+  DONE: "done",
+} as const;
+
+export const taskStatusValidator = v.union(
+  v.literal(TASK_STATUSES.BACKLOG),
+  v.literal(TASK_STATUSES.TODO),
+  v.literal(TASK_STATUSES.IN_PROGRESS),
+  v.literal(TASK_STATUSES.REVIEW),
+  v.literal(TASK_STATUSES.BLOCKED),
+  v.literal(TASK_STATUSES.DONE),
+);
+export type TaskStatus = Infer<typeof taskStatusValidator>;
+
+export const PRIORITIES = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  URGENT: "urgent",
+} as const;
+
+export const priorityValidator = v.union(
+  v.literal(PRIORITIES.LOW),
+  v.literal(PRIORITIES.MEDIUM),
+  v.literal(PRIORITIES.HIGH),
+  v.literal(PRIORITIES.URGENT),
+);
+export type Priority = Infer<typeof priorityValidator>;
+
+export const PROJECT_STATUSES = {
+  PLANNING: "planning",
+  IN_PROGRESS: "in_progress",
+  REVIEW: "review",
+  DELIVERED: "delivered",
+} as const;
+
 const schema = defineSchema({
   users: defineTable({
     clerkId: v.optional(v.string()),
@@ -410,6 +484,144 @@ const schema = defineSchema({
       dimensions: 1536,
       filterFields: ["userId", "collectionId"],
     }),
+
+  // ========== AGENT SYSTEM (Mission Control) ==========
+  
+  // Agent definitions and configuration
+  agents: defineTable({
+    agentId: agentIdValidator,
+    name: v.string(),
+    role: v.string(),
+    emoji: v.string(),
+    color: v.string(),
+    department: v.union(
+      v.literal("sales"),
+      v.literal("ops"),
+      v.literal("finance"),
+      v.literal("delivery"),
+    ),
+    description: v.string(),
+    expertise: v.array(v.string()),
+    isActive: v.boolean(),
+    soulPath: v.string(), // Path to SOUL.md
+  })
+    .index("agentId", ["agentId"])
+    .index("department", ["department"]),
+
+  // Tasks assigned to agents
+  agentTasks: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    description: v.string(),
+    agentId: agentIdValidator,
+    status: taskStatusValidator,
+    priority: priorityValidator,
+    context: v.optional(v.string()),
+    handoffFrom: v.optional(agentIdValidator),
+    handoffTo: v.optional(agentIdValidator),
+    handoffNote: v.optional(v.string()),
+    createdBy: v.id("users"),
+    assignedTo: v.id("users"), // Can be agent or human
+    dueDate: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    tags: v.array(v.string()),
+    projectId: v.optional(v.id("agentProjects")),
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("agentId_status", ["agentId", "status"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("assignedTo", ["assignedTo"])
+    .index("projectId", ["projectId"]),
+
+  // Agent projects (Modern Phase client work)
+  agentProjects: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    client: v.string(),
+    description: v.string(),
+    status: v.union(
+      v.literal("planning"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("delivered"),
+    ),
+    startDate: v.number(),
+    targetDate: v.number(),
+    agents: v.array(agentIdValidator),
+    progress: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"]),
+
+  // Global context (shared across all agents)
+  agentContext: defineTable({
+    orgId: v.id("organizations"),
+    companyPriorities: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.string(),
+        priority: priorityValidator,
+        owner: v.union(agentIdValidator, v.literal("scotty")),
+        deadline: v.optional(v.number()),
+      }),
+    ),
+    sharedResources: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        type: v.union(v.literal("doc"), v.literal("template"), v.literal("asset"), v.literal("link")),
+        url: v.string(),
+        description: v.string(),
+      }),
+    ),
+    recentWins: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.string(),
+        agentId: agentIdValidator,
+        date: v.number(),
+        impact: v.optional(v.string()),
+      }),
+    ),
+    lastUpdated: v.number(),
+    updatedBy: v.union(agentIdValidator, v.literal("scotty")),
+  })
+    .index("orgId", ["orgId"]),
+
+  // Agent sessions (track active OpenClaw sessions)
+  agentSessions: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    sessionId: v.string(), // OpenClaw session ID
+    status: v.union(v.literal("idle"), v.literal("working"), v.literal("blocked"), v.literal("offline")),
+    currentTaskId: v.optional(v.id("agentTasks")),
+    startedAt: v.number(),
+    lastActivityAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("orgId_agentId", ["orgId", "agentId"])
+    .index("sessionId", ["sessionId"]),
+
+  // Activity log (what agents are doing)
+  agentActivity: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    action: v.string(),
+    target: v.string(),
+    taskId: v.optional(v.id("agentTasks")),
+    projectId: v.optional(v.id("agentProjects")),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("orgId_timestamp", ["orgId", "timestamp"]),
 });
 
 export default schema;
