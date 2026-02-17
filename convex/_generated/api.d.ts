@@ -1,0 +1,105 @@
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import type * as admin from "../admin.js";
+import type * as app from "../app.js";
+import type * as auditLog from "../auditLog.js";
+import type * as chat from "../chat.js";
+import type * as collections from "../collections.js";
+import type * as doclingParse from "../doclingParse.js";
+import type * as documents from "../documents.js";
+import type * as email_index from "../email/index.js";
+import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
+import type * as env from "../env.js";
+import type * as gdpr from "../gdpr.js";
+import type * as helicone from "../helicone.js";
+import type * as http from "../http.js";
+import type * as init from "../init.js";
+import type * as largeUpload from "../largeUpload.js";
+import type * as largeUploadMutations from "../largeUploadMutations.js";
+import type * as llamaParse from "../llamaParse.js";
+import type * as organizations from "../organizations.js";
+import type * as processingJobs from "../processingJobs.js";
+import type * as promptSecurity from "../promptSecurity.js";
+import type * as rag from "../rag.js";
+import type * as ragLarge from "../ragLarge.js";
+import type * as ragLargeMutations from "../ragLargeMutations.js";
+import type * as ragProcess from "../ragProcess.js";
+import type * as rateLimit from "../rateLimit.js";
+import type * as stripe from "../stripe.js";
+import type * as usage from "../usage.js";
+import type * as utils_auth from "../utils/auth.js";
+import type * as waitlist from "../waitlist.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
+  app: typeof app;
+  auditLog: typeof auditLog;
+  chat: typeof chat;
+  collections: typeof collections;
+  doclingParse: typeof doclingParse;
+  documents: typeof documents;
+  "email/index": typeof email_index;
+  "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
+  env: typeof env;
+  gdpr: typeof gdpr;
+  helicone: typeof helicone;
+  http: typeof http;
+  init: typeof init;
+  largeUpload: typeof largeUpload;
+  largeUploadMutations: typeof largeUploadMutations;
+  llamaParse: typeof llamaParse;
+  organizations: typeof organizations;
+  processingJobs: typeof processingJobs;
+  promptSecurity: typeof promptSecurity;
+  rag: typeof rag;
+  ragLarge: typeof ragLarge;
+  ragLargeMutations: typeof ragLargeMutations;
+  ragProcess: typeof ragProcess;
+  rateLimit: typeof rateLimit;
+  stripe: typeof stripe;
+  usage: typeof usage;
+  "utils/auth": typeof utils_auth;
+  waitlist: typeof waitlist;
+}>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+export declare const api: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "public">
+>;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
+export declare const internal: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "internal">
+>;
+
+export declare const components: {};

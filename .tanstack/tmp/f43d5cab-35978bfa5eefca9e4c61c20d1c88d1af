@@ -1,0 +1,311 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
+import { Shield, Eye, Trash2, Download, Users, Lock } from "lucide-react";
+
+export const Route = createFileRoute("/_app/_auth/privacy")({
+  component: PrivacyPolicy,
+  beforeLoad: () => ({
+    title: "Privacy Policy",
+    headerTitle: "Privacy Policy",
+    headerDescription: "Learn about how we protect your data and privacy.",
+  }),
+});
+
+function PrivacyPolicy() {
+  const lastUpdated = "February 3, 2026";
+
+  return (
+    <div className="container max-w-4xl mx-auto py-8 px-4">
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
+        <p className="text-muted-foreground">
+          Your privacy is important to us. This policy explains how we collect,
+          use, and protect your data.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Last updated: {lastUpdated}
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Information We Collect
+            </CardTitle>
+            <CardDescription>
+              We collect information necessary to provide and improve our
+              services.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">Account Information</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Name and email address</li>
+                <li>Profile picture (if provided)</li>
+                <li>Authentication data via Clerk</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Usage Data</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Documents you upload and create</li>
+                <li>Chat conversations and messages</li>
+                <li>Usage statistics and analytics</li>
+                <li>Feedback and ratings</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Technical Data</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>IP address and general location</li>
+                <li>Browser and device information</li>
+                <li>Cookies and similar technologies</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              How We Use Your Information
+            </CardTitle>
+            <CardDescription>
+              We use your data to provide, maintain, and improve our services.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold">Service Provision</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Create and manage your account</li>
+                  <li>• Process document uploads</li>
+                  <li>• Provide AI chat functionality</li>
+                  <li>• Manage subscriptions</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-semibold">Improvement & Analytics</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Analyze usage patterns</li>
+                  <li>• Improve AI responses</li>
+                  <li>• Optimize performance</li>
+                  <li>• Develop new features</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Data Sharing and Third Parties
+            </CardTitle>
+            <CardDescription>
+              We only share your data with trusted third parties when necessary.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-semibold">Service Providers</h4>
+                <p className="text-sm text-muted-foreground">
+                  We use third-party services to operate our platform:
+                </p>
+                <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                  <li>
+                    <strong>Clerk:</strong> Authentication and user management
+                  </li>
+                  <li>
+                    <strong>Stripe:</strong> Payment processing
+                  </li>
+                  <li>
+                    <strong>OpenAI:</strong> AI model processing
+                  </li>
+                  <li>
+                    <strong>Resend:</strong> Email delivery
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold">Legal Requirements</h4>
+                <p className="text-sm text-muted-foreground">
+                  We may share your data when required by law, court order, or
+                  to protect our rights and safety.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Data Security and Retention
+            </CardTitle>
+            <CardDescription>
+              We implement strong security measures to protect your data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-semibold">Security Measures</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• End-to-end encryption for data transmission</li>
+                  <li>• Regular security audits and penetration testing</li>
+                  <li>• Access controls and authentication</li>
+                  <li>• Secure data storage and backup procedures</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold">Data Retention</h4>
+                <p className="text-sm text-muted-foreground">
+                  We retain your data only as long as necessary to provide our
+                  services and comply with legal obligations. You can request
+                  data deletion at any time.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Your GDPR Rights
+            </CardTitle>
+            <CardDescription>
+              Under GDPR, you have comprehensive rights over your personal data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold">Data Rights</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>
+                    <strong>Access:</strong> Know what data we have
+                  </li>
+                  <li>
+                    <strong>Portability:</strong> Export your data
+                  </li>
+                  <li>
+                    <strong>Correction:</strong> Update inaccurate data
+                  </li>
+                  <li>
+                    <strong>Erasure:</strong> Request data deletion
+                  </li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-semibold">Control Rights</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>
+                    <strong>Consent:</strong> Control data processing
+                  </li>
+                  <li>
+                    <strong>Objection:</strong> Restrict processing
+                  </li>
+                  <li>
+                    <strong>Withdrawal:</strong> Remove consent
+                  </li>
+                  <li>
+                    <strong>Complaint:</strong> Contact authorities
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm">
+                To exercise these rights, visit the{" "}
+                <strong>Data & Privacy</strong> section in your account settings
+                or contact our support team.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Cookie Policy
+            </CardTitle>
+            <CardDescription>
+              We use cookies to enhance your experience and analyze usage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-semibold">Cookie Types</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>
+                    <strong>Essential:</strong> Required for basic functionality
+                  </li>
+                  <li>
+                    <strong>Analytics:</strong> Help us understand usage
+                  </li>
+                  <li>
+                    <strong>Marketing:</strong> For personalized content
+                  </li>
+                  <li>
+                    <strong>Functional:</strong> Remember preferences
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold">Cookie Control</h4>
+                <p className="text-sm text-muted-foreground">
+                  You can control cookie preferences through our consent banner
+                  or your browser settings. You can withdraw consent at any
+                  time.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Contact Information</CardTitle>
+            <CardDescription>
+              If you have questions about this privacy policy or your data
+              rights.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <p>
+                <strong>Email:</strong> privacy@modernphase.app
+              </p>
+              <p>
+                <strong>Address:</strong> Modern Phase, [Address]
+              </p>
+              <p>
+                <strong>Data Protection Officer:</strong> dpo@modernphase.app
+              </p>
+            </div>
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm">
+                For complaints about data handling, you can contact your local
+                data protection authority or the supervisory authority in your
+                jurisdiction.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

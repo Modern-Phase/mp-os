@@ -1,0 +1,28 @@
+# High-Scale PDF Parsing Pipeline: Fatbook Strategy
+**Target:** 788MB PDF -> Structured JSON/Markdown -> Neon DB (Next.js)
+
+## 🏗️ Architecture: The "Sidecar" Pattern
+Because pure Node.js libraries lack the "Computer Vision" required to parse complex multi-column part tables, we use a Python-based worker (Docling) accessible via a TypeScript SDK.
+
+### 1. Docker Orchestration (`docker-compose.yml`)
+Add this to your starter kit to run the parser alongside your Next.js app.
+
+```yaml
+services:
+  # Your Next.js SaaS App
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PARSER_URL=http://docling-serve:5000
+
+  # The Document Parser (Python Core)
+  docling-serve:
+    image: quay.io/ds4sd/docling-serve:latest
+    ports:
+      - "5000:5000"
+    deploy:
+      resources:
+        limits:
+          memory: 4gb # Essential for 800MB files

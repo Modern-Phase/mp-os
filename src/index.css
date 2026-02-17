@@ -1,0 +1,136 @@
+/*
+* TailwindCSS & ShadCN.
+* @see https://tailwindcss.com/docs/guides/vite
+* @see https://ui.shadcn.com
+*/
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 230 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 25% 10%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 96%;
+    --secondary-foreground: 230 25% 10%;
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 220 15% 96%;
+    --accent-foreground: 230 25% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 38 92% 50%;
+    --radius: 0.5rem;
+    --muted-grid: rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    --background: 230 25% 7%;
+    --foreground: 0 0% 98%;
+    --card: 230 20% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 230 20% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 230 25% 7%;
+    --secondary: 230 15% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 230 15% 15%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 230 25% 7%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 230 15% 18%;
+    --input: 230 15% 18%;
+    --ring: 38 92% 50%;
+    --muted-grid: rgba(255, 255, 255, 0.05);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+body {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: system-ui, sans-serif;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  cursor: pointer;
+  @apply transition duration-200 active:opacity-60;
+}
+
+button {
+  cursor: pointer;
+  @apply transition duration-200 active:scale-[0.98];
+}
+
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+}
+
+::selection {
+  color: hsl(var(--secondary-foreground));
+  background-color: hsl(var(--accent));
+}
+
+/*
+ * Scrollbar styles
+ */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground));
+}
+
+/*
+ * Misc
+ */
+.base-grid {
+  @apply will-change-auto;
+
+  background-size: 30px 30px;
+  background-image: linear-gradient(90deg, var(--muted-grid) 1px, transparent 0),
+    linear-gradient(180deg, var(--muted-grid) 1px, transparent 0);
+}
