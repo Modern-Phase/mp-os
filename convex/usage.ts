@@ -1,9 +1,9 @@
-import { query, internalMutation } from "@cvx/_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "@cvx/_generated/dataModel";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { PLANS } from "@cvx/schema";
-import type { PlanKey } from "@cvx/schema";
+import type { Id } from "./_generated/dataModel";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import { PLANS } from "./schema";
+import type { PlanKey } from "./schema";
 
 // Plan limits: chat messages and documents per billing period, storage in bytes
 export const PLAN_LIMITS: Record<

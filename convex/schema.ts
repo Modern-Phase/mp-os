@@ -695,6 +695,28 @@ const schema = defineSchema({
     .index("orgId_status", ["orgId", "status"])
     .index("agentId", ["agentId"])
     .index("sessionId", ["sessionId"]),
+
+  // VPS instance tracking (live state synced from orchestrator)
+  vpsInstances: defineTable({
+    agentId: v.string(),
+    serviceUnit: v.string(),
+    systemdState: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("failed"),
+      v.literal("activating"),
+      v.literal("deactivating"),
+      v.literal("unknown"),
+    ),
+    gatewayPort: v.number(),
+    gatewayReachable: v.boolean(),
+    pid: v.optional(v.number()),
+    uptime: v.optional(v.string()),
+    lastStarted: v.optional(v.string()),
+    memoryUsage: v.optional(v.number()),
+    lastSyncedAt: v.number(),
+  })
+    .index("agentId", ["agentId"]),
 });
 
 export default schema;

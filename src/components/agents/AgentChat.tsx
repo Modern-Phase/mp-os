@@ -3,12 +3,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { api } from '../../convex/_generated/api'
-import { Id } from '../../convex/_generated/dataModel'
-import { Button } from '../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
-import { ScrollArea } from '../../components/ui/scroll-area'
+import { api } from '~/convex/_generated/api'
+import { Id } from '~/convex/_generated/dataModel'
+import { Button } from '@/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
+import { Input } from '@/ui/input'
+import { ScrollArea } from '@/ui/scroll-area'
 import { Send, Bot, User, Loader2 } from 'lucide-react'
 
 interface AgentChatProps {

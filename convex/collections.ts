@@ -1,7 +1,7 @@
-import { mutation, query, internalMutation } from "@cvx/_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { Id } from "@cvx/_generated/dataModel";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 async function getAuthUserId(
   ctx: QueryCtx | MutationCtx,

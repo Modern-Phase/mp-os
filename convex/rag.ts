@@ -4,11 +4,11 @@ import {
   internalQuery,
   query,
   internalMutation,
-} from "@cvx/_generated/server";
-import { internal, api } from "@cvx/_generated/api";
+} from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
-import { Id } from "@cvx/_generated/dataModel";
-import { PROCESSING_STATUS } from "@cvx/schema";
+import { Id } from "./_generated/dataModel";
+import { PROCESSING_STATUS } from "./schema";
 
 // OpenAI configuration for embeddings and processing
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

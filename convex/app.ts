@@ -1,11 +1,11 @@
-import { internal } from "@cvx/_generated/api";
-import { mutation, query } from "@cvx/_generated/server";
-import { currencyValidator, PLANS } from "@cvx/schema";
+import { internal } from "./_generated/api";
+import { mutation, query } from "./_generated/server";
+import { currencyValidator, PLANS } from "./schema";
 import { asyncMap } from "convex-helpers";
 import { v } from "convex/values";
-import { User } from "~/types";
-import { Id } from "@cvx/_generated/dataModel";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
+import { User } from "../types";
+import { Id } from "./_generated/dataModel";
+import { QueryCtx, MutationCtx } from "./_generated/server";
 
 const usernameValidator = v.string();
 

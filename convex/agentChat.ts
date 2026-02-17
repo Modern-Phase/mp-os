@@ -39,6 +39,7 @@ export const createChatMessage = mutation({
         orgId: args.orgId,
         messageId,
         agentId: args.agentId,
+        userId,
         status: "queued",
         attempts: 0,
         queuedAt: Date.now(),

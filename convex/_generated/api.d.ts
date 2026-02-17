@@ -9,6 +9,8 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as agentChat from "../agentChat.js";
+import type * as agents from "../agents.js";
 import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
 import type * as chat from "../chat.js";
@@ -18,6 +20,7 @@ import type * as documents from "../documents.js";
 import type * as email_index from "../email/index.js";
 import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
 import type * as env from "../env.js";
+import type * as gatewayIntegration from "../gatewayIntegration.js";
 import type * as gdpr from "../gdpr.js";
 import type * as helicone from "../helicone.js";
 import type * as http from "../http.js";
@@ -36,6 +39,7 @@ import type * as rateLimit from "../rateLimit.js";
 import type * as stripe from "../stripe.js";
 import type * as usage from "../usage.js";
 import type * as utils_auth from "../utils/auth.js";
+import type * as vpsOrchestrator from "../vpsOrchestrator.js";
 import type * as waitlist from "../waitlist.js";
 
 import type {
@@ -46,6 +50,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  agentChat: typeof agentChat;
+  agents: typeof agents;
   app: typeof app;
   auditLog: typeof auditLog;
   chat: typeof chat;
@@ -55,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   "email/index": typeof email_index;
   "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
   env: typeof env;
+  gatewayIntegration: typeof gatewayIntegration;
   gdpr: typeof gdpr;
   helicone: typeof helicone;
   http: typeof http;
@@ -73,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   stripe: typeof stripe;
   usage: typeof usage;
   "utils/auth": typeof utils_auth;
+  vpsOrchestrator: typeof vpsOrchestrator;
   waitlist: typeof waitlist;
 }>;
 

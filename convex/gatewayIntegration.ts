@@ -2,8 +2,10 @@
 // Integration with OpenClaw Gateway for spawning agent sessions
 
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { agentIdValidator } from "./schema";
+import { VPS_ORCHESTRATOR_URL, VPS_API_KEY } from "./env";
 
 // HTTP action to spawn agent session via OpenClaw Gateway
 export const spawnAgentSession = mutation({
@@ -72,71 +74,121 @@ export const spawnAgentSession = mutation({
   },
 });
 
-// Internal: Process queue (called by scheduled job or webhook)
-export const processQueue = internalMutation({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  returns: v.number(),
+// Internal: Get queued items (helper mutation for processQueue action)
+export const getQueuedItems = internalMutation({
+  args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 5;
-    
-    // Get queued items
     const items = await ctx.db
       .query("agentProcessingQueue")
       .withIndex("status", (q) => q.eq("status", "queued"))
       .take(limit);
 
+    // Mark all as processing
+    for (const item of items) {
+      await ctx.db.patch(item._id, {
+        status: "processing",
+        startedAt: Date.now(),
+      });
+    }
+
+    return items;
+  },
+});
+
+// Internal: Mark queue item as completed
+export const completeQueueItem = internalMutation({
+  args: { itemId: v.id("agentProcessingQueue"), sessionId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.itemId, {
+      status: "completed",
+      completedAt: Date.now(),
+    });
+
+    const session = await ctx.db
+      .query("agentSessions")
+      .withIndex("sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    if (session) {
+      await ctx.db.patch(session._id, {
+        status: "idle",
+        lastActivityAt: Date.now(),
+      });
+    }
+  },
+});
+
+// Internal: Mark queue item as failed
+export const failQueueItem = internalMutation({
+  args: {
+    itemId: v.id("agentProcessingQueue"),
+    error: v.string(),
+    attempts: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.itemId, {
+      status: "failed",
+      error: args.error,
+      attempts: args.attempts,
+    });
+  },
+});
+
+// Internal: Process queue via VPS Orchestrator (called by scheduled job or webhook)
+export const processQueue = internalAction({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const items: any[] = await ctx.runMutation(
+      internal.gatewayIntegration.getQueuedItems,
+      { limit: args.limit },
+    );
+
     for (const item of items) {
       try {
-        // Mark as processing
-        await ctx.db.patch(item._id, {
-          status: "processing",
-          startedAt: Date.now(),
-        });
+        if (VPS_ORCHESTRATOR_URL && VPS_API_KEY) {
+          // Send task to OpenClaw instance via VPS Orchestrator
+          const response = await fetch(
+            `${VPS_ORCHESTRATOR_URL}/api/instances/${item.agentId}/message`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": VPS_API_KEY,
+              },
+              body: JSON.stringify({
+                message: item.task,
+                sessionId: item.sessionId,
+              }),
+            },
+          );
 
-        // Here you would call OpenClaw Gateway
-        // This is a placeholder for the actual HTTP call
-        // const result = await fetch(`${process.env.OPENCLAW_GATEWAY_URL}/spawn`, {
-        //   method: 'POST',
-        //   headers: { 'Authorization': `Bearer ${process.env.OPENCLAW_TOKEN}` },
-        //   body: JSON.stringify({
-        //     agentId: item.agentId,
-        //     task: item.task,
-        //     context: item.context,
-        //     sessionId: item.sessionId,
-        //   }),
-        // });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Gateway error (${response.status}): ${errorText}`);
+          }
+        } else {
+          console.log(
+            "VPS Orchestrator not configured, skipping real dispatch for:",
+            item.task,
+          );
+        }
 
-        // For now, simulate processing
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Mark as completed (in real impl, this would be done by agent callback)
-        await ctx.db.patch(item._id, {
-          status: "completed",
-          completedAt: Date.now(),
-        });
-
-        // Update session
-        await ctx.db
-          .query("agentSessions")
-          .withIndex("sessionId", (q) => q.eq("sessionId", item.sessionId))
-          .first()
-          .then((session: any) => {
-            if (session) {
-              ctx.db.patch(session._id, {
-                status: "idle",
-                lastActivityAt: Date.now(),
-              });
-            }
-          });
-
+        await ctx.runMutation(
+          internal.gatewayIntegration.completeQueueItem,
+          { itemId: item._id, sessionId: item.sessionId },
+        );
       } catch (error) {
-        await ctx.db.patch(item._id, {
-          status: "failed",
-          error: String(error),
-          attempts: item.attempts + 1,
-        });
+        await ctx.runMutation(
+          internal.gatewayIntegration.failQueueItem,
+          {
+            itemId: item._id,
+            error: String(error),
+            attempts: item.attempts + 1,
+          },
+        );
       }
     }
 

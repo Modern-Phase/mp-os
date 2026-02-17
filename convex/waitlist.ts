@@ -1,4 +1,4 @@
-import { mutation } from "@cvx/_generated/server";
+import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const join = mutation({

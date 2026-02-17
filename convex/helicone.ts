@@ -1,7 +1,7 @@
-import { action, internalAction } from "@cvx/_generated/server";
-import { api, internal } from "@cvx/_generated/api";
+import { action, internalAction } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { HELICONE_API_KEY } from "@cvx/env";
+import { HELICONE_API_KEY } from "./env";
 
 // Sync user feedback to Helicone
 export const syncFeedback = internalAction({

@@ -24,10 +24,12 @@ import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
+import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
 import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 
@@ -107,6 +109,12 @@ const AppAuthDashboardLayoutSettingsRoute =
     path: '/settings',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutMissionControlRoute =
+  AppAuthDashboardLayoutMissionControlRouteImport.update({
+    id: '/mission-control',
+    path: '/mission-control',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutGdprRoute =
   AppAuthDashboardLayoutGdprRouteImport.update({
     id: '/gdpr',
@@ -129,6 +137,12 @@ const AppAuthDashboardLayoutAnalyticsRoute =
   AppAuthDashboardLayoutAnalyticsRouteImport.update({
     id: '/analytics',
     path: '/analytics',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutAgentChatRoute =
+  AppAuthDashboardLayoutAgentChatRouteImport.update({
+    id: '/agent-chat',
+    path: '/agent-chat',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutSettingsIndexRoute =
@@ -155,10 +169,12 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppAuthDashboardLayoutRouteWithChildren
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/login/': typeof AppLoginLayoutIndexRoute
+  '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
@@ -174,10 +190,12 @@ export interface FileRoutesByTo {
   '/terms': typeof AppAuthTermsRoute
   '/onboarding': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/login': typeof AppLoginLayoutIndexRoute
+  '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -197,10 +215,12 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout': typeof AppAuthDashboardLayoutRouteWithChildren
   '/_app/_auth/onboarding/_layout': typeof AppAuthOnboardingLayoutRouteWithChildren
   '/_app/login/_layout/': typeof AppLoginLayoutIndexRoute
+  '/_app/_auth/dashboard/_layout/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/_app/_auth/dashboard/_layout/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
@@ -220,10 +240,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/onboarding'
     | '/login/'
+    | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
+    | '/dashboard/mission-control'
     | '/dashboard/settings'
     | '/onboarding/username'
     | '/dashboard/'
@@ -239,10 +261,12 @@ export interface FileRouteTypes {
     | '/terms'
     | '/onboarding'
     | '/login'
+    | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
+    | '/dashboard/mission-control'
     | '/onboarding/username'
     | '/dashboard'
     | '/dashboard/settings/billing'
@@ -261,10 +285,12 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout'
     | '/_app/_auth/onboarding/_layout'
     | '/_app/login/_layout/'
+    | '/_app/_auth/dashboard/_layout/agent-chat'
     | '/_app/_auth/dashboard/_layout/analytics'
     | '/_app/_auth/dashboard/_layout/checkout'
     | '/_app/_auth/dashboard/_layout/documents'
     | '/_app/_auth/dashboard/_layout/gdpr'
+    | '/_app/_auth/dashboard/_layout/mission-control'
     | '/_app/_auth/dashboard/_layout/settings'
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
@@ -386,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/mission-control': {
+      id: '/_app/_auth/dashboard/_layout/mission-control'
+      path: '/mission-control'
+      fullPath: '/dashboard/mission-control'
+      preLoaderRoute: typeof AppAuthDashboardLayoutMissionControlRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/gdpr': {
       id: '/_app/_auth/dashboard/_layout/gdpr'
       path: '/gdpr'
@@ -412,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/dashboard/analytics'
       preLoaderRoute: typeof AppAuthDashboardLayoutAnalyticsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/agent-chat': {
+      id: '/_app/_auth/dashboard/_layout/agent-chat'
+      path: '/agent-chat'
+      fullPath: '/dashboard/agent-chat'
+      preLoaderRoute: typeof AppAuthDashboardLayoutAgentChatRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/settings/': {
@@ -450,20 +490,25 @@ const AppAuthDashboardLayoutSettingsRouteWithChildren =
   )
 
 interface AppAuthDashboardLayoutRouteChildren {
+  AppAuthDashboardLayoutAgentChatRoute: typeof AppAuthDashboardLayoutAgentChatRoute
   AppAuthDashboardLayoutAnalyticsRoute: typeof AppAuthDashboardLayoutAnalyticsRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
+  AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
 }
 
 const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
   {
+    AppAuthDashboardLayoutAgentChatRoute: AppAuthDashboardLayoutAgentChatRoute,
     AppAuthDashboardLayoutAnalyticsRoute: AppAuthDashboardLayoutAnalyticsRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
     AppAuthDashboardLayoutDocumentsRoute: AppAuthDashboardLayoutDocumentsRoute,
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
+    AppAuthDashboardLayoutMissionControlRoute:
+      AppAuthDashboardLayoutMissionControlRoute,
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,

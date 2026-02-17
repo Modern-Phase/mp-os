@@ -11,8 +11,8 @@ import {
   Preview,
   Text,
 } from "@react-email/components";
-import { sendEmail } from "@cvx/email";
-import { SITE_URL } from "@cvx/env";
+import { sendEmail } from "..";
+import { SITE_URL } from "../../env";
 
 interface SubscriptionEmailOptions {
   email: string;

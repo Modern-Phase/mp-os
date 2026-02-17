@@ -1,11 +1,11 @@
 import { httpRouter } from "convex/server";
-import { httpAction } from "@cvx/_generated/server";
-import { api, internal } from "@cvx/_generated/api";
-import type { Id } from "@cvx/_generated/dataModel";
-import { ERRORS } from "~/errors";
-import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL } from "@cvx/env";
-import { RATE_LIMITS } from "@cvx/rateLimit";
-import { canSendChatMessage } from "@cvx/usage";
+import { httpAction } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { ERRORS } from "../errors";
+import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL } from "./env";
+import { RATE_LIMITS } from "./rateLimit";
+import { canSendChatMessage } from "./usage";
 import {
   containsInjectionAttempt,
   sanitizeMessageRoles,
@@ -14,7 +14,7 @@ import {
   scanForPII,
   redactPII,
   INJECTION_FAILURE_RESPONSE,
-} from "@cvx/promptSecurity";
+} from "./promptSecurity";
 import OpenAI from "openai";
 
 // Type for message parts (matches TanStack AI UIMessage format)
@@ -41,13 +41,13 @@ const MAX_MESSAGES = 50;
 // Get plain text content from a message (model format has .content; UIMessage may have .parts)
 function getMessageContent(m: {
   content?: string;
-  parts?: MessagePart[];
+  parts?: unknown[];
 }): string {
   if (typeof m.content === "string" && m.content.trim())
     return m.content.trim();
   if (Array.isArray(m.parts)) {
-    const text = m.parts.find((p) => p.type === "text" && p.content);
-    if (text && typeof text.content === "string") return text.content.trim();
+    const text = m.parts.find((p) => (p as MessagePart).type === "text" && (p as MessagePart).content);
+    if (text && typeof (text as MessagePart).content === "string") return ((text as MessagePart).content as string).trim();
   }
   return "";
 }

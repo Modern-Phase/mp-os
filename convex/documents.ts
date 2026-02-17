@@ -1,15 +1,15 @@
-import { mutation, query } from "@cvx/_generated/server";
-import { internal } from "@cvx/_generated/api";
+import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { Id } from "@cvx/_generated/dataModel";
-import { DOCUMENT_TYPES, PLANS, PROCESSING_STATUS } from "@cvx/schema";
-import { checkAndIncrementRateLimit, RATE_LIMITS } from "@cvx/rateLimit";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import { DOCUMENT_TYPES, PLANS, PROCESSING_STATUS } from "./schema";
+import { checkAndIncrementRateLimit, RATE_LIMITS } from "./rateLimit";
 import {
   canCreateDocument,
   getPeriodEndForUser,
   PLAN_LIMITS,
-} from "@cvx/usage";
+} from "./usage";
 
 // Auth helper
 async function getAuthUserId(

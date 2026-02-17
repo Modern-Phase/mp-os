@@ -4,13 +4,13 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
-} from "@cvx/_generated/server";
+} from "./_generated/server";
 import { v } from "convex/values";
-import type { Doc } from "~/convex/_generated/dataModel";
-import { ERRORS } from "~/errors";
-import { currencyValidator, intervalValidator, PLANS } from "@cvx/schema";
-import { api, internal } from "~/convex/_generated/api";
-import { SITE_URL, STRIPE_SECRET_KEY } from "@cvx/env";
+import type { Doc } from "./_generated/dataModel";
+import { ERRORS } from "../errors";
+import { currencyValidator, intervalValidator, PLANS } from "./schema";
+import { api, internal } from "./_generated/api";
+import { SITE_URL, STRIPE_SECRET_KEY } from "./env";
 import { asyncMap } from "convex-helpers";
 
 // Business logic constants
@@ -21,13 +21,22 @@ export const BUSINESS_RULES = {
   ] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
 } as const;
 
-if (!STRIPE_SECRET_KEY) {
-  throw new Error(`Stripe - ${ERRORS.ENVS_NOT_INITIALIZED}`);
+function getStripe() {
+  if (!STRIPE_SECRET_KEY) {
+    throw new Error(`Stripe - ${ERRORS.ENVS_NOT_INITIALIZED}`);
+  }
+  return new Stripe(STRIPE_SECRET_KEY, {
+    apiVersion: "2024-06-20",
+    typescript: true,
+  });
 }
 
-export const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-  typescript: true,
+let _stripe: Stripe | undefined;
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    if (!_stripe) _stripe = getStripe();
+    return (_stripe as any)[prop];
+  },
 });
 
 /**

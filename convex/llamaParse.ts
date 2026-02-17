@@ -1,10 +1,10 @@
 "use node";
 
-import { internalAction } from "@cvx/_generated/server";
-import { internal } from "@cvx/_generated/api";
+import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { Id } from "@cvx/_generated/dataModel";
-import { JOB_STATUS } from "@cvx/schema";
+import { Id } from "./_generated/dataModel";
+import { JOB_STATUS } from "./schema";
 
 const LLAMA_PARSE_API_KEY = process.env.LLAMA_PARSE_API_KEY;
 const LLAMA_PARSE_BASE_URL = "https://api.cloud.llamaindex.ai/api/parsing";

@@ -1,5 +1,5 @@
-import type { MutationCtx } from "@cvx/_generated/server";
-import { internalMutation } from "@cvx/_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 const WINDOW_MS_CHAT = 60 * 1000; // 1 minute

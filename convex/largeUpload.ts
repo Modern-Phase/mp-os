@@ -1,10 +1,10 @@
 "use node";
 
-import { action, internalAction } from "@cvx/_generated/server";
-import { internal, api } from "@cvx/_generated/api";
+import { action, internalAction } from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
-import { JOB_STATUS } from "@cvx/schema";
-import { Id } from "@cvx/_generated/dataModel";
+import { JOB_STATUS } from "./schema";
+import { Id } from "./_generated/dataModel";
 import {
   S3Client,
   PutObjectCommand,

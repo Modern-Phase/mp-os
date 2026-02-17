@@ -128,11 +128,10 @@ export const getAgents = query({
 });
 
 export const getAgent = query({
-  args: { 
+  args: {
     orgId: v.id("organizations"),
-    agentId: agentIdValidator 
+    agentId: agentIdValidator
   },
-  returns: v.optional(v.any()),
   handler: async (ctx, args) => {
     return AGENT_DEFINITIONS[args.agentId];
   },
@@ -148,7 +147,8 @@ export const getAgentTasks = query({
   handler: async (ctx, args) => {
     let tasks = await ctx.db
       .query("agentTasks")
-      .withIndex("orgId_agentId", (q) => q.eq("orgId", args.orgId).eq("agentId", args.agentId))
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.eq(q.field("orgId"), args.orgId))
       .collect();
     
     if (args.status) {
@@ -192,7 +192,6 @@ export const getProjects = query({
 
 export const getGlobalContext = query({
   args: { orgId: v.id("organizations") },
-  returns: v.optional(v.any()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("agentContext")

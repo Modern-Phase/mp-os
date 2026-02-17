@@ -1,5 +1,5 @@
-import { AUTH_EMAIL, AUTH_RESEND_KEY } from "@cvx/env";
-import { ERRORS } from "~/errors";
+import { AUTH_EMAIL, AUTH_RESEND_KEY } from "../env";
+import { ERRORS } from "../../errors";
 import { z } from "zod";
 
 const ResendSuccessSchema = z.object({

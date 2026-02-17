@@ -3,11 +3,11 @@ import {
   query,
   internalAction,
   internalMutation,
-} from "@cvx/_generated/server";
-import { internal } from "@cvx/_generated/api";
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { Id } from "@cvx/_generated/dataModel";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Auth helper
 async function getAuthUserId(

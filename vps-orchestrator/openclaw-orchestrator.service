@@ -1,0 +1,21 @@
+[Unit]
+Description=OpenClaw VPS Orchestrator API
+After=network.target openclaw.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/openclaw-orchestrator
+ExecStart=/root/.bun/bin/bun run src/index.ts
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=ORCHESTRATOR_PORT=18800
+Environment=OPENCLAW_HOME=/home/openclaw/.openclaw
+Environment=OPENCLAW_WORKSPACE=/home/openclaw/.openclaw/workspace
+Environment=OPENCLAW_SERVICE=openclaw
+Environment=OPENCLAW_GATEWAY_PORT=18789
+EnvironmentFile=/opt/openclaw-orchestrator/.env
+
+[Install]
+WantedBy=multi-user.target

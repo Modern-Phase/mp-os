@@ -1,6 +1,6 @@
-import { internalMutation, internalQuery } from "@cvx/_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { PROCESSING_STATUS } from "@cvx/schema";
+import { PROCESSING_STATUS } from "./schema";
 
 // Insert pending chunk (without embedding) - single
 export const insertPendingChunk = internalMutation({

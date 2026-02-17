@@ -1,5 +1,5 @@
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { Id } from "@cvx/_generated/dataModel";
+import { QueryCtx, MutationCtx } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
 
 export type Role = "admin" | "member" | "viewer";
 

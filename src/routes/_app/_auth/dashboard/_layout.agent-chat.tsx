@@ -3,14 +3,14 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '../../../../convex/_generated/api'
+import { api } from '~/convex/_generated/api'
 import { useState } from 'react'
-import { AgentChat } from '../../../../components/agents/AgentChat'
-import { AgentCard } from '../../../../components/agents/AgentCard'
-import { Button } from '../../../../components/ui/button'
+import { AgentChat } from '@/components/agents/AgentChat'
+import { AgentCard } from '@/components/agents/AgentCard'
+import { Button } from '@/ui/button'
 import { ArrowLeft } from 'lucide-react'
 
-export const Route = createFileRoute('/_app/_auth/dashboard/agent-chat')({
+export const Route = createFileRoute('/_app/_auth/dashboard/_layout/agent-chat')({
   component: AgentChatPage,
 })
 

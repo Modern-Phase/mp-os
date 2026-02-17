@@ -1,10 +1,10 @@
 "use node";
 
-import { internalAction } from "@cvx/_generated/server";
-import { internal, api } from "@cvx/_generated/api";
+import { internalAction } from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
-import { Id } from "@cvx/_generated/dataModel";
-import { DOCUMENT_TYPES, PROCESSING_STATUS } from "@cvx/schema";
+import { Id } from "./_generated/dataModel";
+import { DOCUMENT_TYPES, PROCESSING_STATUS } from "./schema";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE_URL = "https://api.openai.com/v1";

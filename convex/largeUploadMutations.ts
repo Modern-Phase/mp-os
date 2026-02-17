@@ -1,6 +1,6 @@
-import { internalMutation } from "@cvx/_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { DOCUMENT_TYPES, PROCESSING_STATUS } from "@cvx/schema";
+import { DOCUMENT_TYPES, PROCESSING_STATUS } from "./schema";
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "large-documents";
 

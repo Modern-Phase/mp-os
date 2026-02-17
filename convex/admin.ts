@@ -1,4 +1,4 @@
-import { query, mutation } from "@cvx/_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { isSystemAdmin } from "./utils/auth";
 

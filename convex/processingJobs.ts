@@ -1,8 +1,8 @@
-import { query, internalMutation, internalQuery } from "@cvx/_generated/server";
+import { query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { QueryCtx, MutationCtx } from "@cvx/_generated/server";
-import { Id } from "@cvx/_generated/dataModel";
-import { JOB_STATUS, jobStatusValidator } from "@cvx/schema";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import { JOB_STATUS, jobStatusValidator } from "./schema";
 
 // Auth helper
 async function getAuthUserId(
