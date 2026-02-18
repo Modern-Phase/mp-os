@@ -34,6 +34,38 @@ export const create = mutation({
   },
 });
 
+export const ensurePersonalOrg = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    // Check if user already has any membership
+    const existing = await ctx.db
+      .query("memberships")
+      .withIndex("userId", (q) => q.eq("userId", userId))
+      .first();
+    if (existing) return existing.orgId;
+
+    // Create a personal org
+    const user = await ctx.db.get(userId);
+    const slug = `personal-${userId}`;
+    const orgId = await ctx.db.insert("organizations", {
+      name: user?.username ? `${user.username}'s Org` : "Personal",
+      slug,
+      ownerId: userId,
+    });
+
+    await ctx.db.insert("memberships", {
+      orgId,
+      userId,
+      role: "admin",
+    });
+
+    return orgId;
+  },
+});
+
 export const getMyOrganizations = query({
   args: {},
   handler: async (ctx) => {

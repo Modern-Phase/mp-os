@@ -1,6 +1,6 @@
 // src/components/agents/AgentCard.tsx
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { Card, CardContent } from '@/ui/card'
@@ -15,7 +15,7 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, orgId, onClick, isActive }: AgentCardProps) {
-  const { data: tasks } = useQuery(
+  const tasks = useQuery(
     api.agents.getAgentTasks,
     { orgId, agentId: agent.agentId }
   )
@@ -38,11 +38,11 @@ export function AgentCard({ agent, orgId, onClick, isActive }: AgentCardProps) {
   }
 
   return (
-    <Card 
+    <Card
       className={`cursor-pointer transition-all hover:shadow-md ${
         isActive ? 'ring-2 ring-offset-2' : ''
       }`}
-      style={{ 
+      style={{
         borderColor: isActive ? agent.color : undefined,
       }}
       onClick={onClick}
@@ -50,7 +50,7 @@ export function AgentCard({ agent, orgId, onClick, isActive }: AgentCardProps) {
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div 
+            <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
               style={{ backgroundColor: `${agent.color}20` }}
             >
@@ -81,7 +81,7 @@ export function AgentCard({ agent, orgId, onClick, isActive }: AgentCardProps) {
 
         <div className="mt-3 flex flex-wrap gap-1">
           {agent.expertise.slice(0, 2).map((skill: string) => (
-            <span 
+            <span
               key={skill}
               className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full"
             >

@@ -72,7 +72,7 @@ export const generateR2PresignedGetUrl = internalAction({
     key: v.string(),
     expiresIn: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     if (!isR2Configured()) {
       throw new Error("R2 storage is not configured.");
     }

@@ -1,7 +1,7 @@
 // src/components/agents/TaskBoard.tsx
 
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { TaskStatus } from '~/convex/schema'
@@ -44,11 +44,11 @@ interface TaskBoardProps {
 }
 
 export function TaskBoard({ agent, orgId }: TaskBoardProps) {
-  const { data: tasks, refetch } = useQuery(
+  const tasks = useQuery(
     api.agents.getAgentTasks,
     { orgId, agentId: agent.agentId }
   )
-  
+
   const updateStatus = useMutation(api.agents.updateTaskStatus)
   const createTask = useMutation(api.agents.createTask)
 
@@ -66,25 +66,23 @@ export function TaskBoard({ agent, orgId }: TaskBoardProps) {
   const handleDrop = async (e: React.DragEvent, status: TaskStatus) => {
     const taskId = e.dataTransfer.getData('taskId') as Id<'agentTasks'>
     if (taskId) {
-      await updateStatus.mutateAsync({ taskId, status })
-      refetch()
+      await updateStatus({ taskId, status })
     }
   }
 
   const handleCreateTask = async () => {
     if (!newTask.title) return
-    
-    await createTask.mutateAsync({
+
+    await createTask({
       orgId,
       title: newTask.title,
       description: newTask.description,
       agentId: agent.agentId,
       priority: newTask.priority as any,
     })
-    
+
     setNewTask({ title: '', description: '', priority: 'medium' })
     setNewTaskOpen(false)
-    refetch()
   }
 
   const getTasksByColumn = (status: TaskStatus) => {

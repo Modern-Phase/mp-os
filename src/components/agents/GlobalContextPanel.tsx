@@ -1,14 +1,14 @@
 // src/components/agents/GlobalContextPanel.tsx
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Progress } from '@/ui/progress'
-import { 
-  Target, 
+import {
+  Target,
   Folder,
   TrendingUp,
   Activity
@@ -21,7 +21,7 @@ interface GlobalContextPanelProps {
 }
 
 export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextPanelProps) {
-  const { data: context } = useQuery(
+  const context = useQuery(
     api.agents.getGlobalContext,
     { orgId }
   )
@@ -35,7 +35,7 @@ export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextP
         </h2>
         {context && (
           <span className="text-xs text-muted-foreground">
-            Updated by {context.updatedBy}
+            Updated by {(context as any).updatedBy}
           </span>
         )}
       </div>
@@ -75,7 +75,7 @@ export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextP
           </Card>
 
           {/* Company Priorities */}
-          {context?.companyPriorities && (
+          {(context as any)?.companyPriorities && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -84,7 +84,7 @@ export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextP
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {context.companyPriorities.slice(0, 3).map((priority: any) => (
+                {(context as any).companyPriorities.slice(0, 3).map((priority: any) => (
                   <div key={priority.id} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50">
                     <PriorityBadge priority={priority.priority} />
                     <div className="flex-1 min-w-0">

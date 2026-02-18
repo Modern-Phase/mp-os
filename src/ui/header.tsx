@@ -8,6 +8,8 @@ export function Header() {
     | { headerTitle?: string; headerDescription?: string }
     | undefined;
 
+  if (!routeContext?.headerTitle) return null;
+
   return (
     <header className="z-10 flex w-full flex-col border-b border-border bg-card px-6">
       <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between py-12">

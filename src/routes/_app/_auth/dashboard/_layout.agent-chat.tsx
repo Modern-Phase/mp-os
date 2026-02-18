@@ -2,35 +2,31 @@
 // Individual agent chat page
 
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { useState } from 'react'
 import { AgentChat } from '@/components/agents/AgentChat'
 import { AgentCard } from '@/components/agents/AgentCard'
-import { Button } from '@/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { Id } from '~/convex/_generated/dataModel'
 
 export const Route = createFileRoute('/_app/_auth/dashboard/_layout/agent-chat')({
   component: AgentChatPage,
 })
 
 function AgentChatPage() {
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => api.app.getCurrentUser(),
-  })
-  
-  const { data: agents } = useQuery({
-    queryKey: ['agents', currentUser?.orgId],
-    queryFn: () => currentUser?.orgId 
-      ? api.agents.getAgents({ orgId: currentUser.orgId })
-      : null,
-    enabled: !!currentUser?.orgId,
-  })
+  const currentUser = useQuery(api.app.getCurrentUser)
+
+  // Derive orgId from first membership
+  const orgId = currentUser?.memberships?.[0]?.orgId as Id<'organizations'> | undefined
+
+  const agents = useQuery(
+    api.agents.getAgents,
+    orgId ? { orgId } : 'skip',
+  )
 
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
 
-  if (!currentUser || !agents) {
+  if (!currentUser || !orgId || !agents) {
     return <div className="p-8">Loading...</div>
   }
 
@@ -46,7 +42,7 @@ function AgentChatPage() {
             <AgentCard
               key={agent.agentId}
               agent={agent}
-              orgId={currentUser.orgId}
+              orgId={orgId}
               isActive={selectedAgent?.agentId === agent.agentId}
               onClick={() => setSelectedAgent(agent)}
             />
@@ -57,9 +53,9 @@ function AgentChatPage() {
       {/* Chat Area */}
       <main className="flex-1 p-6">
         {selectedAgent ? (
-          <AgentChat 
-            agent={selectedAgent} 
-            orgId={currentUser.orgId}
+          <AgentChat
+            agent={selectedAgent}
+            orgId={orgId}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-muted-foreground">

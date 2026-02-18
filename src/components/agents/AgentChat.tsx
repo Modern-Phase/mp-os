@@ -2,14 +2,14 @@
 // In-app chat interface for talking to agents
 
 import { useState, useRef, useEffect } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { Input } from '@/ui/input'
 import { ScrollArea } from '@/ui/scroll-area'
-import { Send, Bot, User, Loader2 } from 'lucide-react'
+import { Send, User, Loader2 } from 'lucide-react'
 
 interface AgentChatProps {
   agent: any
@@ -18,56 +18,18 @@ interface AgentChatProps {
 
 export function AgentChat({ agent, orgId }: AgentChatProps) {
   const [message, setMessage] = useState('')
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Get chat history
-  const { data: messages, refetch } = useQuery({
-    queryKey: ['agentChat', orgId, agent.agentId],
-    queryFn: async () => {
-      const result = await api.agentChat.getAgentChatHistory({
-        orgId,
-        agentId: agent.agentId,
-        limit: 50,
-      })
-      return result
-    },
-    refetchInterval: 3000, // Poll every 3 seconds for new messages
-  })
+  // Get chat history (reactive via Convex)
+  const messages = useQuery(
+    api.agentChat.getAgentChatHistory,
+    { orgId, agentId: agent.agentId, limit: 50 }
+  )
 
-  // Create chat session
-  const createSession = useMutation({
-    mutationFn: async () => {
-      const result = await api.agentChat.getOrCreateSession({
-        orgId,
-        agentId: agent.agentId,
-      })
-      return result
-    },
-    onSuccess: (id) => setSessionId(id),
-  })
-
-  // Send message
-  const sendMessage = useMutation({
-    mutationFn: async (content: string) => {
-      if (!sessionId) {
-        const newSession = await createSession.mutateAsync()
-        setSessionId(newSession)
-      }
-      
-      return await api.agentChat.createChatMessage({
-        orgId,
-        agentId: agent.agentId,
-        content,
-        role: 'user',
-        sessionId: sessionId || undefined,
-      })
-    },
-    onSuccess: () => {
-      setMessage('')
-      refetch()
-    },
-  })
+  // Mutations
+  const createChatMessage = useMutation(api.agentChat.createChatMessage)
+  const getOrCreateSession = useMutation(api.agentChat.getOrCreateSession)
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -76,24 +38,36 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
     }
   }, [messages])
 
-  // Initialize session on first load
-  useEffect(() => {
-    if (!sessionId) {
-      createSession.mutate()
-    }
-  }, [])
-
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!message.trim()) return
-    sendMessage.mutate(message)
+    if (!message.trim() || sending) return
+
+    setSending(true)
+    try {
+      const sessionId = await getOrCreateSession({
+        orgId,
+        agentId: agent.agentId,
+      })
+
+      await createChatMessage({
+        orgId,
+        agentId: agent.agentId,
+        content: message,
+        role: 'user',
+        sessionId: sessionId || undefined,
+      })
+
+      setMessage('')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="border-b pb-4">
         <CardTitle className="flex items-center gap-3">
-          <div 
+          <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
             style={{ backgroundColor: `${agent.color}20` }}
           >
@@ -118,7 +92,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
           <div className="space-y-4">
             {/* Welcome message */}
             <div className="flex gap-3">
-              <div 
+              <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
                 style={{ backgroundColor: `${agent.color}20` }}
               >
@@ -126,7 +100,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
               </div>
               <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 max-w-[80%]">
                 <p className="text-sm">
-                  Hi! I'm {agent.name}, your {agent.role.toLowerCase()}. 
+                  Hi! I'm {agent.name}, your {agent.role.toLowerCase()}.
                   I can help with: {agent.expertise.join(', ')}. What do you need?
                 </p>
               </div>
@@ -134,11 +108,11 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
 
             {/* Chat messages */}
             {messages?.map((msg: any) => (
-              <div 
-                key={msg._id} 
+              <div
+                key={msg._id}
                 className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
               >
-                <div 
+                <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
                     msg.role === 'user' ? 'bg-blue-100' : ''
                   }`}
@@ -146,10 +120,10 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                 >
                   {msg.role === 'user' ? <User className="w-4 h-4" /> : agent.emoji}
                 </div>
-                <div 
+                <div
                   className={`rounded-lg p-3 max-w-[80%] ${
-                    msg.role === 'user' 
-                      ? 'bg-blue-600 text-white' 
+                    msg.role === 'user'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 dark:bg-gray-800'
                   }`}
                 >
@@ -162,9 +136,9 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
             ))}
 
             {/* Typing indicator */}
-            {sendMessage.isPending && (
+            {sending && (
               <div className="flex gap-3">
-                <div 
+                <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
                   style={{ backgroundColor: `${agent.color}20` }}
                 >
@@ -185,12 +159,12 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
             onChange={(e) => setMessage(e.target.value)}
             placeholder={`Message ${agent.name}...`}
             className="flex-1"
-            disabled={sendMessage.isPending}
+            disabled={sending}
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             size="icon"
-            disabled={!message.trim() || sendMessage.isPending}
+            disabled={!message.trim() || sending}
           >
             <Send className="w-4 h-4" />
           </Button>

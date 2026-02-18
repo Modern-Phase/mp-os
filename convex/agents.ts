@@ -122,7 +122,7 @@ const AGENT_DEFINITIONS = {
 export const getAgents = query({
   args: { orgId: v.id("organizations") },
   returns: v.array(v.any()),
-  handler: async (ctx, args) => {
+  handler: async (_ctx, _args) => {
     return Object.values(AGENT_DEFINITIONS);
   },
 });
@@ -132,7 +132,7 @@ export const getAgent = query({
     orgId: v.id("organizations"),
     agentId: agentIdValidator
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return AGENT_DEFINITIONS[args.agentId];
   },
 });

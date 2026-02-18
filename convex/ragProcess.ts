@@ -250,7 +250,7 @@ export const processImage = internalAction({
     userId: v.id("users"),
     jobId: v.optional(v.id("processingJobs")),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, _args) => {
     // ... (Keep existing image logic)
   },
 });
@@ -261,7 +261,7 @@ export const processAudio = internalAction({
     userId: v.id("users"),
     jobId: v.optional(v.id("processingJobs")),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, _args) => {
     // ... (Keep existing audio logic)
   },
 });
