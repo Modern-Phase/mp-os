@@ -4,7 +4,8 @@ import { Button } from "@/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "~/convex/_generated/api";
 import { convexQuery, useConvexAction } from "@convex-dev/react-query";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery as useTanstackQuery } from "@tanstack/react-query";
+import { useQuery } from "convex/react";
 import { getLocaleCurrency } from "@/utils/misc";
 import { CURRENCIES, PLANS } from "@cvx/schema";
 
@@ -25,8 +26,8 @@ export const Route = createFileRoute(
 });
 
 export default function BillingSettings() {
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-  const { data: plans } = useQuery(convexQuery(api.app.getActivePlans, {}));
+  const user = useQuery(api.app.getCurrentUser);
+  const { data: plans } = useTanstackQuery(convexQuery(api.app.getActivePlans, {}));
 
   const [selectedPlanId, setSelectedPlanId] = useState(
     user?.subscription?.planId,

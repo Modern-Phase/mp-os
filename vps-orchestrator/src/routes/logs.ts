@@ -1,12 +1,22 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { CONFIG } from "../config";
+import { CONFIG, validateAgentId } from "../config";
 
 const app = new Hono();
 
+const MAX_LOG_LINES = 10_000;
+
 // Stream logs via SSE (from the single openclaw service)
 app.get("/instances/:id/logs", async (c) => {
-  const lines = parseInt(c.req.query("lines") || "100");
+  const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
+  const lines = Math.max(1, Math.min(
+    parseInt(c.req.query("lines") || "100") || 100,
+    MAX_LOG_LINES,
+  ));
 
   return streamSSE(c, async (stream) => {
     const proc = Bun.spawn(

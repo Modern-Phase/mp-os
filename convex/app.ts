@@ -76,10 +76,10 @@ export const ensureUser = mutation({
 
 export const getCurrentUser = query({
   args: {},
-  handler: async (ctx): Promise<User | undefined> => {
+  handler: async (ctx): Promise<User | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      return;
+      return null;
     }
     const [user, subscription] = await Promise.all([
       ctx.db.get(userId),
@@ -89,7 +89,7 @@ export const getCurrentUser = query({
         .unique(),
     ]);
     if (!user) {
-      return;
+      return null;
     }
 
     // Batch the plan query with other operations if needed

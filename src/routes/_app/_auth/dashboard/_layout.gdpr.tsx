@@ -19,8 +19,9 @@ import {
   Clock,
   Mail,
 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery as useTanstackQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/gdpr")({
@@ -40,13 +41,13 @@ function GdprRequests() {
     functional: false,
   });
 
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
-  const { data: userConsents } = useQuery(
+  const user = useQuery(api.app.getCurrentUser);
+  const { data: userConsents } = useTanstackQuery(
     convexQuery(api.gdpr.getUserConsents, {}),
   );
 
-  // exportUserData is a query, so we use useQuery instead of useMutation
-  const { isLoading: isExporting, refetch: refetchExport } = useQuery({
+  // exportUserData is a query, so we use useTanstackQuery instead of useMutation
+  const { isLoading: isExporting, refetch: refetchExport } = useTanstackQuery({
     queryKey: ["user-data-export"],
     queryFn: () => convexQuery(api.gdpr.exportUserData, {}),
     enabled: false, // Don't fetch automatically

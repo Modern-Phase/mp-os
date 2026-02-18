@@ -17,6 +17,7 @@ import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import { Route as DocumentsRoute } from "@/routes/_app/_auth/dashboard/_layout.documents";
 import { Route as AnalyticsRoute } from "@/routes/_app/_auth/dashboard/_layout.analytics";
+import { Route as AgentChatRoute } from "@/routes/_app/_auth/dashboard/_layout.agent-chat";
 import { Route as SettingsRoute } from "@/routes/_app/_auth/dashboard/_layout.settings.index";
 import { User } from "~/types";
 
@@ -27,6 +28,7 @@ export function Navigation({ user }: { user: User }) {
   const isDashboardPath = matchRoute({ to: DashboardRoute.fullPath });
   const isDocumentsPath = matchRoute({ to: DocumentsRoute.fullPath });
   const isAnalyticsPath = matchRoute({ to: AnalyticsRoute.fullPath });
+  const isAgentChatPath = matchRoute({ to: AgentChatRoute.fullPath });
   const isChatPath = matchRoute({ to: "/chat" });
 
   if (!user) {
@@ -152,7 +154,7 @@ export function Navigation({ user }: { user: User }) {
               `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
             )}
           >
-            Dashboard
+            Mission Control
           </Link>
         </div>
         <div
@@ -198,6 +200,21 @@ export function Navigation({ user }: { user: User }) {
             )}
           >
             AI Chat
+          </Link>
+        </div>
+        <div
+          className={cn(
+            `flex h-12 items-center border-b-2`,
+            isAgentChatPath ? "border-primary" : "border-transparent",
+          )}
+        >
+          <Link
+            to={AgentChatRoute.fullPath}
+            className={cn(
+              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
+            )}
+          >
+            Agent Chat
           </Link>
         </div>
       </div>

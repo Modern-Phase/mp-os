@@ -16,12 +16,29 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: "*",
+    // Only allow requests from your frontend and Convex cloud
+    origin: (origin) => {
+      if (!origin) return origin; // Allow non-browser requests (Convex actions, curl)
+      const allowed = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ];
+      // Also allow *.convex.site and your production domain
+      if (
+        origin.endsWith(".convex.site") ||
+        origin.endsWith(".convex.cloud") ||
+        origin.endsWith(".netlify.app") ||
+        allowed.includes(origin)
+      ) {
+        return origin;
+      }
+      return null; // Block other origins
+    },
     allowHeaders: ["Content-Type", "X-API-Key", "Authorization"],
   }),
 );
 
-// Health check (no auth)
+// Health check — minimal info, no auth required (used for uptime monitoring)
 app.route("/api", healthRoutes);
 
 // All other routes require API key
@@ -42,7 +59,6 @@ app.onError((err, c) => {
 
 console.log(`OpenClaw Orchestrator starting on port ${CONFIG.port}`);
 console.log(`OpenClaw home: ${CONFIG.openclawHome}`);
-console.log(`Service prefix: ${CONFIG.servicePrefix}`);
 console.log(
   `API key: ${CONFIG.apiKey ? "configured" : "NOT SET (all requests will fail auth)"}`,
 );

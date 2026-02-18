@@ -34,14 +34,11 @@ async function orchestratorFetch(
   return response;
 }
 
-async function getAuthUserId(ctx: any): Promise<any | null> {
+/** Actions don't have ctx.db — only check that the caller is authenticated. */
+async function requireAuth(ctx: { auth: { getUserIdentity: () => Promise<any> } }) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-  const user = await ctx.db
-    .query("users")
-    .withIndex("clerkId", (q: any) => q.eq("clerkId", identity.subject))
-    .unique();
-  return user?._id ?? null;
+  if (!identity) throw new Error("Unauthorized");
+  return identity;
 }
 
 // ---------- Actions (called by UI, make HTTP requests to VPS) ----------
@@ -49,8 +46,7 @@ async function getAuthUserId(ctx: any): Promise<any | null> {
 export const listInstances = action({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch("/api/instances");
     const instances = await response.json();
@@ -74,8 +70,7 @@ export const controlInstance = action({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch(
       `/api/instances/${args.instanceId}/${args.command}`,
@@ -97,8 +92,7 @@ export const createInstance = action({
     model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch("/api/instances", {
       method: "POST",
@@ -114,8 +108,7 @@ export const createInstance = action({
 export const deleteInstance = action({
   args: { instanceId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     await orchestratorFetch(`/api/instances/${args.instanceId}`, {
       method: "DELETE",
@@ -132,8 +125,7 @@ export const deleteInstance = action({
 export const getSoul = action({
   args: { instanceId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch(
       `/api/instances/${args.instanceId}/soul`,
@@ -145,8 +137,7 @@ export const getSoul = action({
 export const updateSoul = action({
   args: { instanceId: v.string(), content: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     await orchestratorFetch(`/api/instances/${args.instanceId}/soul`, {
       method: "PUT",
@@ -160,8 +151,7 @@ export const updateSoul = action({
 export const getSessions = action({
   args: { instanceId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch(
       `/api/instances/${args.instanceId}/sessions`,
@@ -173,8 +163,7 @@ export const getSessions = action({
 export const getSessionMessages = action({
   args: { instanceId: v.string(), sessionId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch(
       `/api/instances/${args.instanceId}/sessions/${args.sessionId}`,
@@ -190,8 +179,7 @@ export const sendMessage = action({
     sessionId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     const response = await orchestratorFetch(
       `/api/instances/${args.instanceId}/message`,
@@ -211,8 +199,7 @@ export const sendMessage = action({
 export const checkConnection = action({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    await requireAuth(ctx);
 
     try {
       const response = await orchestratorFetch("/api/health");

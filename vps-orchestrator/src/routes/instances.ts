@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { CONFIG } from "../config";
+import { CONFIG, validateAgentId, getAgentDir } from "../config";
 import {
   getGatewayStatus,
   startGateway,
@@ -8,6 +8,7 @@ import {
 } from "../services/systemd";
 import { listAgents, readSoul, ensureAgentDir, writeSoul } from "../services/filesystem";
 import type { InstanceInfo } from "../types";
+import { rm } from "fs/promises";
 
 const app = new Hono();
 
@@ -55,8 +56,11 @@ app.get("/instances", async (c) => {
 // Get single agent instance
 app.get("/instances/:id", async (c) => {
   const { id } = c.req.param();
-  const agents = await listAgents();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
 
+  const agents = await listAgents();
   if (!agents.includes(id)) {
     return c.json({ error: "Agent not found" }, 404);
   }
@@ -95,11 +99,11 @@ app.post("/instances", async (c) => {
     return c.json({ error: "Missing required fields: id, name" }, 400);
   }
 
-  if (!/^[a-z][a-z0-9-]*$/.test(body.id)) {
+  if (!validateAgentId(body.id)) {
     return c.json(
       {
         error:
-          "ID must be lowercase alphanumeric with hyphens, starting with a letter",
+          "ID must be lowercase alphanumeric with hyphens, starting with a letter (max 64 chars)",
       },
       400,
     );
@@ -108,15 +112,16 @@ app.post("/instances", async (c) => {
   try {
     await ensureAgentDir(body.id);
 
-    if (body.soulContent) {
-      await writeSoul(body.id, body.soulContent);
-    } else {
-      // Write a default SOUL.md
-      await writeSoul(
-        body.id,
-        `# SOUL.md — ${body.name}\n\n## Identity\n**Name:** ${body.name}\n\n## Core Purpose\nDescribe this agent's purpose.\n\n## Personality\n- Helpful and direct\n\n## Boundaries\n- Stay in your lane\n`,
-      );
+    const MAX_SOUL_SIZE = 1_000_000; // 1MB
+    const soulContent =
+      body.soulContent ||
+      `# SOUL.md — ${body.name}\n\n## Identity\n**Name:** ${body.name}\n\n## Core Purpose\nDescribe this agent's purpose.\n\n## Personality\n- Helpful and direct\n\n## Boundaries\n- Stay in your lane\n`;
+
+    if (soulContent.length > MAX_SOUL_SIZE) {
+      return c.json({ error: "SOUL.md content exceeds 1MB limit" }, 413);
     }
+
+    await writeSoul(body.id, soulContent);
 
     const gateway = await getGatewayStatus();
     const gatewayReachable =
@@ -152,13 +157,18 @@ app.post("/instances", async (c) => {
 
 // Gateway lifecycle controls (shared across all agents)
 app.post("/instances/:id/start", async (c) => {
+  const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
   try {
     await startGateway();
     await new Promise((r) => setTimeout(r, 2000));
     const gateway = await getGatewayStatus();
     return c.json({
       ...gateway,
-      id: c.req.param().id,
+      id,
       serviceUnit: `${CONFIG.serviceName}.service`,
       gatewayPort: CONFIG.gatewayPort,
       gatewayReachable: await checkGatewayHealth(),
@@ -172,10 +182,15 @@ app.post("/instances/:id/start", async (c) => {
 });
 
 app.post("/instances/:id/stop", async (c) => {
+  const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
   try {
     await stopGateway();
     return c.json({
-      id: c.req.param().id,
+      id,
       systemdState: "inactive",
       serviceUnit: `${CONFIG.serviceName}.service`,
       gatewayPort: CONFIG.gatewayPort,
@@ -190,13 +205,18 @@ app.post("/instances/:id/stop", async (c) => {
 });
 
 app.post("/instances/:id/restart", async (c) => {
+  const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
   try {
     await restartGateway();
     await new Promise((r) => setTimeout(r, 2000));
     const gateway = await getGatewayStatus();
     return c.json({
       ...gateway,
-      id: c.req.param().id,
+      id,
       serviceUnit: `${CONFIG.serviceName}.service`,
       gatewayPort: CONFIG.gatewayPort,
       gatewayReachable: await checkGatewayHealth(),
@@ -212,10 +232,13 @@ app.post("/instances/:id/restart", async (c) => {
 // Delete agent (remove SOUL.md directory)
 app.delete("/instances/:id", async (c) => {
   const { id } = c.req.param();
-  const { rmdir } = await import("fs/promises");
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
   try {
-    const dir = `${CONFIG.workspaceDir}/agents/${id}`;
-    await rmdir(dir, { recursive: true } as any);
+    const dir = getAgentDir(id); // Safe — validates + resolves path
+    await rm(dir, { recursive: true });
     return c.json({ success: true, message: `Agent ${id} removed` });
   } catch (error) {
     return c.json(

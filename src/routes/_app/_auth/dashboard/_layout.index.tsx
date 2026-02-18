@@ -1,107 +1,341 @@
-import { createFileRoute } from "@tanstack/react-router";
-import siteConfig from "~/site.config";
-import { useQuery } from "convex/react";
-import { api } from "@cvx/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
-import { Users, CreditCard, Activity } from "lucide-react";
+// src/routes/_app/_auth/dashboard/_layout.index.tsx
+// Mission Control — Multi-Agent Dashboard with live VPS management
+
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { createFileRoute } from "@tanstack/react-router"
+import { useQuery as useConvexQuery, useAction, useMutation } from "convex/react"
+import { api } from "~/convex/_generated/api"
+import { Id } from "~/convex/_generated/dataModel"
+import { Button } from "@/ui/button"
+import { ScrollArea } from "@/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs"
+import {
+  LayoutGrid,
+  Users,
+  Plus,
+  RefreshCw,
+  Loader2,
+} from "lucide-react"
+import { InstanceCard } from "@/components/agents/InstanceCard"
+import { TaskBoard } from "@/components/agents/TaskBoard"
+import { GlobalTaskBoard } from "@/components/agents/GlobalTaskBoard"
+import { SoulEditor } from "@/components/agents/SoulEditor"
+import { SessionViewer } from "@/components/agents/SessionViewer"
+import { LogViewer } from "@/components/agents/LogViewer"
+import { AgentChat } from "@/components/agents/AgentChat"
+import { GlobalContextPanel } from "@/components/agents/GlobalContextPanel"
+import { VpsConnectionStatus } from "@/components/agents/VpsConnectionStatus"
+import { InstanceCreateWizard } from "@/components/agents/InstanceCreateWizard"
+import siteConfig from "~/site.config"
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/")({
-  component: Dashboard,
+  component: MissionControlPage,
   beforeLoad: () => ({
-    title: `${siteConfig.siteTitle} - Dashboard`,
-    headerTitle: "Dashboard",
-    headerDescription: "Manage your Apps and view your usage.",
+    title: `${siteConfig.siteTitle} - Mission Control`,
   }),
-});
+})
 
-export default function Dashboard() {
-  const user = useQuery(api.app.getCurrentUser);
+function MissionControlPage() {
+  const currentUser = useConvexQuery(api.app.getCurrentUser)
+  const orgId = currentUser?.memberships?.[0]?.orgId as Id<"organizations"> | undefined
 
-  // Only fetch admin stats if the user is a system admin
-  const adminStats = useQuery(api.admin.getStats, user?.isAdmin ? {} : "skip");
+  // Auto-create personal org if user has no memberships
+  const ensurePersonalOrg = useMutation(api.organizations.ensurePersonalOrg)
+  const [orgEnsured, setOrgEnsured] = useState(false)
+  useEffect(() => {
+    if (currentUser && !orgId && !orgEnsured) {
+      setOrgEnsured(true)
+      ensurePersonalOrg().catch(console.error)
+    }
+  }, [currentUser, orgId, orgEnsured, ensurePersonalOrg])
+
+  // Agent definitions (static metadata)
+  const agents = useConvexQuery(
+    api.agents.getAgents,
+    orgId ? { orgId } : "skip",
+  )
+
+  // VPS instances (live state, reactive)
+  const vpsInstances = useConvexQuery(api.vpsOrchestrator.getVpsInstances)
+
+  // Projects and activity for context panel
+  const projects = useConvexQuery(
+    api.agents.getProjects,
+    orgId ? { orgId } : "skip",
+  )
+  const recentActivity = useConvexQuery(
+    api.agents.getRecentActivity,
+    orgId ? { orgId, limit: 20 } : "skip",
+  )
+
+  // Action to sync VPS instances
+  const listInstances = useAction(api.vpsOrchestrator.listInstances)
+
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("tasks")
+  const [showCreateWizard, setShowCreateWizard] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  // Merge agent definitions with VPS live data
+  const mergedAgents = useMemo(() => {
+    if (!agents) return []
+    return agents.map((agent: any) => {
+      const vps = vpsInstances?.find(
+        (i: any) => i.agentId === agent.agentId,
+      )
+      return { ...agent, vps }
+    })
+  }, [agents, vpsInstances])
+
+  // Also include VPS instances that don't have a matching agent definition
+  const unmatchedInstances = useMemo(() => {
+    if (!vpsInstances) return []
+    const agentIds = new Set(agents?.map((a: any) => a.agentId) || [])
+    return vpsInstances
+      .filter((i: any) => !agentIds.has(i.agentId))
+      .map((i: any) => ({
+        agentId: i.agentId,
+        name: i.agentId,
+        role: "OpenClaw Instance",
+        emoji: "🦞",
+        color: "#EF4444",
+        department: "custom",
+        expertise: [],
+        vps: i,
+      }))
+  }, [agents, vpsInstances])
+
+  const allAgents = useMemo(
+    () => [...mergedAgents, ...unmatchedInstances],
+    [mergedAgents, unmatchedInstances],
+  )
+
+  // Sync VPS state on mount and periodically
+  const syncVps = useCallback(async () => {
+    setIsSyncing(true)
+    try {
+      await listInstances()
+    } catch (err) {
+      console.error("Failed to sync VPS instances:", err)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [listInstances])
+
+  useEffect(() => {
+    syncVps()
+    const interval = setInterval(syncVps, 15000)
+    return () => clearInterval(interval)
+  }, [syncVps])
+
+  const selectedAgentData = selectedAgent
+    ? allAgents.find((a: any) => a.agentId === selectedAgent)
+    : null
+
+  if (!currentUser) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const activeCount = allAgents.filter(
+    (a: any) => a.vps?.systemdState === "active",
+  ).length
 
   return (
-    <div className="flex h-full w-full flex-col gap-8 bg-secondary px-6 py-8 dark:bg-black">
-      <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-8">
-        {/* User Welcome Section */}
-        <div className="flex w-full flex-col rounded-lg border border-border bg-card dark:bg-black">
-          <div className="flex w-full flex-col rounded-lg p-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-xl font-medium text-primary">Dashboard</h2>
-              <p className="text-sm font-normal text-primary/60">
-                Welcome back{user?.username ? `, ${user.username}` : ""}.
-              </p>
-              {user?.memberships && user.memberships.length > 0 && (
-                <div className="mt-2 flex gap-2">
-                  {user.memberships.map((m) => (
-                    <span
-                      key={m._id}
-                      className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                    >
-                      {m.role}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      {/* Header */}
+      <header className="border-b px-6 py-4 flex items-center justify-between bg-white dark:bg-gray-950">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
+            MP
+          </div>
+          <div>
+            <h1 className="font-bold text-lg">Mission Control</h1>
+            <p className="text-xs text-muted-foreground">
+              Multi-Agent Command Center
+            </p>
           </div>
         </div>
 
-        {/* Admin Section (Visible only to admins) */}
-        {user?.isAdmin && adminStats && (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-primary">
-                Platform Overview
-              </h3>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                Admin
-              </span>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Users
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {adminStats.totalUsers ?? "..."}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Subscriptions
-                  </CardTitle>
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {adminStats.totalSubscriptions ?? "..."}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Active Subs
-                  </CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {adminStats.activeSubscriptions ?? "..."}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        <div className="flex items-center gap-4">
+          <VpsConnectionStatus />
+          <div className="text-sm text-muted-foreground">
+            {activeCount}/{allAgents.length} Online
           </div>
-        )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={syncVps}
+            disabled={isSyncing}
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`}
+            />
+            Sync
+          </Button>
+          <Button size="sm" onClick={() => setShowCreateWizard(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Instance
+          </Button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar - Instance List */}
+        <aside className="w-72 border-r bg-gray-50 dark:bg-gray-900 flex flex-col">
+          <div className="p-4 border-b">
+            <h2 className="font-semibold text-sm flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Instances ({allAgents.length})
+            </h2>
+          </div>
+
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-3">
+              {allAgents.map((agent: any) => (
+                <InstanceCard
+                  key={agent.agentId}
+                  agent={agent}
+                  vpsInstance={agent.vps}
+                  isSelected={selectedAgent === agent.agentId}
+                  onClick={() =>
+                    setSelectedAgent(
+                      selectedAgent === agent.agentId ? null : agent.agentId,
+                    )
+                  }
+                  onRefresh={syncVps}
+                />
+              ))}
+              {allAgents.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No instances found. Create one or check VPS connection.
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+        </aside>
+
+        {/* Main Area */}
+        <main className="flex-1 flex overflow-hidden">
+          {selectedAgent && selectedAgentData ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Agent Header */}
+              <div className="px-6 pt-4 pb-2 flex items-center gap-3 border-b">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+                  style={{
+                    backgroundColor: `${selectedAgentData.color}20`,
+                  }}
+                >
+                  {selectedAgentData.emoji}
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm">
+                    {selectedAgentData.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedAgentData.role}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="px-6 pt-3">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList>
+                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                    <TabsTrigger value="soul">SOUL.md</TabsTrigger>
+                    <TabsTrigger value="sessions">Sessions</TabsTrigger>
+                    <TabsTrigger value="chat">Chat</TabsTrigger>
+                    <TabsTrigger value="logs">Logs</TabsTrigger>
+                  </TabsList>
+
+                  <div className="mt-4 overflow-auto flex-1">
+                    <TabsContent value="tasks">
+                      {orgId && (
+                        <TaskBoard agent={selectedAgentData} orgId={orgId} />
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="soul">
+                      <SoulEditor
+                        instanceId={selectedAgent}
+                        agentName={selectedAgentData.name}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="sessions">
+                      <SessionViewer
+                        instanceId={selectedAgent}
+                        agentName={selectedAgentData.name}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="chat">
+                      {orgId && (
+                        <AgentChat
+                          agent={selectedAgentData}
+                          orgId={orgId}
+                        />
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="logs">
+                      <LogViewer
+                        instanceId={selectedAgent}
+                        agentName={selectedAgentData.name}
+                        vpsUrl=""
+                        apiKey=""
+                      />
+                    </TabsContent>
+                  </div>
+                </Tabs>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {orgId ? (
+                <GlobalTaskBoard orgId={orgId} agents={allAgents} />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <LayoutGrid className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">
+                      Select an instance to manage
+                    </p>
+                    <p className="text-sm">
+                      Click any instance card from the sidebar
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Right Panel - Global Context */}
+          {orgId && (
+            <aside className="w-80 border-l bg-white dark:bg-gray-950 p-4">
+              <GlobalContextPanel
+                orgId={orgId}
+                projects={projects || []}
+                activity={recentActivity || []}
+              />
+            </aside>
+          )}
+        </main>
       </div>
+
+      {/* Create Wizard Modal */}
+      {showCreateWizard && (
+        <InstanceCreateWizard
+          onClose={() => setShowCreateWizard(false)}
+          onCreated={syncVps}
+        />
+      )}
     </div>
-  );
+  )
 }

@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import siteConfig from "~/site.config";
 import { PLANS } from "@cvx/schema";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "convex/react";
 import { api } from "@cvx/_generated/api";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/checkout")({
@@ -17,7 +16,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/checkout")({
 });
 
 export default function DashboardCheckout() {
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const user = useQuery(api.app.getCurrentUser);
   const isFreePlan = user?.subscription?.planKey === PLANS.FREE;
   const [isPending, setIsPending] = useState(false);
 

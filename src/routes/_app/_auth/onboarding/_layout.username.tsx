@@ -4,8 +4,9 @@ import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import { useForm } from "@tanstack/react-form";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useQuery } from "convex/react";
 import { api } from "~/convex/_generated/api";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import * as validators from "@/utils/validators";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_app/_auth/onboarding/_layout/username")(
 );
 
 export default function OnboardingUsername() {
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const user = useQuery(api.app.getCurrentUser);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { mutateAsync: completeOnboarding } = useMutation({
     mutationFn: useConvexMutation(api.app.completeOnboarding),

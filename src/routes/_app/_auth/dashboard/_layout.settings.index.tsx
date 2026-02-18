@@ -4,9 +4,10 @@ import { useUploadFiles } from "@xixixao/uploadstuff/react";
 import { useDoubleCheck } from "@/ui/use-double-check";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~/convex/_generated/api";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "convex/react";
 import { useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/_app/_auth/dashboard/_layout/settings/")(
 );
 
 export default function DashboardSettings() {
-  const { data: user } = useQuery(convexQuery(api.app.getCurrentUser, {}));
+  const user = useQuery(api.app.getCurrentUser);
   const signOut = useSignOut();
   const { mutateAsync: updateUsername } = useMutation({
     mutationFn: useConvexMutation(api.app.updateUsername),

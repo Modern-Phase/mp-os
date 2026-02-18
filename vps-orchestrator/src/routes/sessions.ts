@@ -1,13 +1,19 @@
 import { Hono } from "hono";
 import { listAgentSessions, readSession } from "../services/filesystem";
-import { CONFIG } from "../config";
+import { CONFIG, validateAgentId } from "../config";
 import type { GatewayMessageRequest } from "../types";
 
 const app = new Hono();
 
+const MAX_MESSAGE_SIZE = 64_000; // 64KB
+const SESSION_ID_RE = /^[\w:.@_-]{1,255}$/;
+
 // List sessions for an agent
 app.get("/instances/:id/sessions", async (c) => {
   const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
 
   try {
     const sessions = await listAgentSessions(id);
@@ -26,10 +32,18 @@ app.get("/instances/:id/sessions", async (c) => {
 // Get session messages
 app.get("/instances/:id/sessions/:sessionId", async (c) => {
   const { id, sessionId } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
+  const decoded = decodeURIComponent(sessionId);
+  if (!SESSION_ID_RE.test(decoded)) {
+    return c.json({ error: "Invalid session ID format" }, 400);
+  }
 
   try {
-    const messages = await readSession(decodeURIComponent(sessionId));
-    return c.json({ sessionId, agentId: id, messages });
+    const messages = await readSession(decoded);
+    return c.json({ sessionId: decoded, agentId: id, messages });
   } catch (error) {
     return c.json(
       {
@@ -44,10 +58,23 @@ app.get("/instances/:id/sessions/:sessionId", async (c) => {
 // Send message to agent via Gateway
 app.post("/instances/:id/message", async (c) => {
   const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
   const body = await c.req.json<GatewayMessageRequest>();
 
-  if (!body.message) {
+  if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "Missing message field" }, 400);
+  }
+
+  if (body.message.length > MAX_MESSAGE_SIZE) {
+    return c.json({ error: "Message exceeds 64KB limit" }, 413);
+  }
+
+  const sessionId = body.sessionId || `agent:${id}:main`;
+  if (!SESSION_ID_RE.test(sessionId)) {
+    return c.json({ error: "Invalid session ID format" }, 400);
   }
 
   // Check gateway is reachable
@@ -64,8 +91,6 @@ app.post("/instances/:id/message", async (c) => {
       503,
     );
   }
-
-  const sessionId = body.sessionId || `agent:${id}:main`;
 
   try {
     // Proxy message to OpenClaw Gateway
