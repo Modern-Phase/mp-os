@@ -150,7 +150,10 @@ const Citations = memo(({ citations }: { citations: Citation[] }) => {
               <p className="font-medium text-foreground mb-1">
                 {idx + 1}. {citation.documentName}
                 {citation.pageNumber && (
-                  <span className="text-muted-foreground font-normal"> (p.{citation.pageNumber})</span>
+                  <span className="text-muted-foreground font-normal">
+                    {" "}
+                    (p.{citation.pageNumber})
+                  </span>
                 )}
                 {citation.parser && (
                   <Badge variant="outline" className="ml-2 text-[10px] py-0">
@@ -485,13 +488,15 @@ export function ChatInterface() {
   const getCitationsForMessage = useCallback((message: any): Citation[] => {
     // Use real citation metadata when available
     if (message.citationMeta && message.citationMeta.length > 0) {
-      return message.citationMeta.slice(0, 5).map((meta: any, index: number) => ({
-        chunkId: message.retrievedChunks?.[index] || `citation_${index}`,
-        documentName: meta.documentName,
-        content: meta.content,
-        pageNumber: meta.pageNumber,
-        parser: meta.parser,
-      }));
+      return message.citationMeta
+        .slice(0, 5)
+        .map((meta: any, index: number) => ({
+          chunkId: message.retrievedChunks?.[index] || `citation_${index}`,
+          documentName: meta.documentName,
+          content: meta.content,
+          pageNumber: meta.pageNumber,
+          parser: meta.parser,
+        }));
     }
 
     // Fallback for old messages without citationMeta
@@ -728,7 +733,7 @@ export function ChatInterface() {
   }, []);
 
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden">
+    <div className="flex h-screen w-screen bg-background overflow-hidden">
       {/* Session Sidebar */}
       <div
         className={cn(
@@ -941,12 +946,9 @@ export function ChatInterface() {
         </div>
 
         {/* Message Container */}
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 min-h-0 overflow-hidden relative">
           <ScrollArea ref={scrollAreaRef} className="h-full px-4 sm:px-6">
-            <div
-              className="max-w-3xl mx-auto space-y-6 py-6"
-              style={{ fontFamily: "'Inter', sans-serif" }}
-            >
+            <div className="max-w-3xl mx-auto space-y-6 py-6 pb-20 min-h-full">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center py-12">
                   <div className="mb-4">

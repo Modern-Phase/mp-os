@@ -11,15 +11,17 @@ export function Header() {
   if (!routeContext?.headerTitle) return null;
 
   return (
-    <header className="z-10 flex w-full flex-col border-b border-border bg-card px-6">
-      <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between py-12">
+    <header className="z-10 flex w-full flex-col border-b border-border bg-card/50 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between py-8 px-4 lg:px-6">
         <div className="flex flex-col items-start gap-2">
-          <h1 className="text-3xl font-medium text-primary/80">
+          <h1 className="text-2xl lg:text-3xl font-semibold text-foreground">
             {routeContext?.headerTitle}
           </h1>
-          <p className="text-base font-normal text-primary/60">
-            {routeContext?.headerDescription}
-          </p>
+          {routeContext?.headerDescription && (
+            <p className="text-sm lg:text-base text-muted-foreground">
+              {routeContext?.headerDescription}
+            </p>
+          )}
         </div>
       </div>
     </header>

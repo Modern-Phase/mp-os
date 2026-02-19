@@ -150,6 +150,7 @@ export const processQueue = internalAction({
       try {
         if (VPS_ORCHESTRATOR_URL && VPS_API_KEY) {
           // Send task to OpenClaw instance via VPS Orchestrator
+          // Include messageId and orgId so orchestrator can route responses back
           const response = await fetch(
             `${VPS_ORCHESTRATOR_URL}/api/instances/${item.agentId}/message`,
             {
@@ -161,6 +162,8 @@ export const processQueue = internalAction({
               body: JSON.stringify({
                 message: item.task,
                 sessionId: item.sessionId,
+                messageId: item.messageId ?? "",
+                orgId: item.orgId ?? "",
               }),
             },
           );

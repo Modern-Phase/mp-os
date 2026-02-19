@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_app/_auth/chat")({
 
 function ChatPage() {
   return (
-    <div className="h-screen w-screen">
+    <div className="flex h-screen w-screen overflow-hidden">
       <ChatInterface />
     </div>
   );

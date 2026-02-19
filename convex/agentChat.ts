@@ -1,8 +1,10 @@
 // convex/agentChat.ts — Agent chat system for in-app messaging
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { agentIdValidator } from "./schema";
+import { VPS_ORCHESTRATOR_URL, VPS_API_KEY } from "./env";
 
 // Chat message schema
 export const createChatMessage = mutation({
@@ -31,11 +33,9 @@ export const createChatMessage = mutation({
       timestamp: Date.now(),
     });
 
-    // If user message, trigger agent response
+    // If user message, queue for agent processing and dispatch immediately
     if (args.role === "user") {
-      // Spawn agent session via HTTP call to OpenClaw Gateway
-      // This would be handled by a separate service or webhook
-      await ctx.db.insert("agentChatQueue", {
+      const queueId = await ctx.db.insert("agentChatQueue", {
         orgId: args.orgId,
         messageId,
         agentId: args.agentId,
@@ -43,6 +43,16 @@ export const createChatMessage = mutation({
         status: "queued",
         attempts: 0,
         queuedAt: Date.now(),
+      });
+
+      // Schedule immediate dispatch to VPS Orchestrator
+      await ctx.scheduler.runAfter(0, internal.agentChat.dispatchChatMessage, {
+        queueId,
+        messageId: messageId as string,
+        agentId: args.agentId,
+        orgId: args.orgId as string,
+        content: args.content,
+        sessionId: args.sessionId,
       });
     }
 
@@ -172,6 +182,89 @@ export const getOrCreateSession = mutation({
     });
 
     return sessionId;
+  },
+});
+
+// Internal: Dispatch a chat message to the VPS Orchestrator → Gateway WS bridge
+export const dispatchChatMessage = internalAction({
+  args: {
+    queueId: v.id("agentChatQueue"),
+    messageId: v.string(),
+    agentId: v.string(),
+    orgId: v.string(),
+    content: v.string(),
+    sessionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!VPS_ORCHESTRATOR_URL || !VPS_API_KEY) {
+      console.log("[agentChat] VPS Orchestrator not configured, skipping dispatch");
+      return;
+    }
+
+    try {
+      // Mark queue item as processing
+      await ctx.runMutation(internal.agentChat.updateQueueStatus, {
+        queueId: args.queueId,
+        status: "processing",
+      });
+
+      const sessionKey = args.sessionId || `agent:main:${args.agentId}`;
+
+      const response = await fetch(
+        `${VPS_ORCHESTRATOR_URL}/api/instances/${args.agentId}/message`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": VPS_API_KEY,
+          },
+          body: JSON.stringify({
+            message: args.content,
+            sessionId: sessionKey,
+            messageId: args.messageId,
+            orgId: args.orgId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Orchestrator error (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`[agentChat] Dispatched to orchestrator: runId=${result.runId}`);
+    } catch (error) {
+      console.error("[agentChat] Failed to dispatch:", error);
+      await ctx.runMutation(internal.agentChat.updateQueueStatus, {
+        queueId: args.queueId,
+        status: "failed",
+        error: String(error),
+      });
+    }
+  },
+});
+
+// Internal: Update chat queue item status
+export const updateQueueStatus = internalMutation({
+  args: {
+    queueId: v.id("agentChatQueue"),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.queueId, {
+      status: args.status,
+      ...(args.error && { error: args.error }),
+      ...(args.status === "completed" || args.status === "failed"
+        ? { processedAt: Date.now() }
+        : {}),
+    });
   },
 });
 

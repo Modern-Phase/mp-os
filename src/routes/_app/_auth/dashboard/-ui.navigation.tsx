@@ -1,4 +1,17 @@
-import { Slash, Settings, LogOut } from "lucide-react";
+import { useState } from "react";
+import {
+  Slash,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Home,
+  Users,
+  FileText,
+  BarChart3,
+  MessageSquare,
+  Bot,
+} from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
 import { LanguageSwitcher } from "@/ui/language-switcher";
@@ -10,99 +23,123 @@ import {
   DropdownMenuSeparator,
 } from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
-import { buttonVariants } from "@/ui/button-util";
 import { Logo } from "@/ui/logo";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
-import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
-import { Route as DocumentsRoute } from "@/routes/_app/_auth/dashboard/_layout.documents";
-import { Route as AnalyticsRoute } from "@/routes/_app/_auth/dashboard/_layout.analytics";
-import { Route as CrmRoute } from "@/routes/_app/_auth/dashboard/_layout.crm";
-import { Route as AgentChatRoute } from "@/routes/_app/_auth/dashboard/_layout.agent-chat";
-import { Route as SettingsRoute } from "@/routes/_app/_auth/dashboard/_layout.settings.index";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { User } from "~/types";
+
+const navItems = [
+  { label: "Mission Control", path: "/dashboard", icon: Home },
+  { label: "CRM", path: "/dashboard/crm", icon: Users },
+  { label: "Documents", path: "/dashboard/documents", icon: FileText },
+  { label: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
+  { label: "AI Chat", path: "/chat", icon: MessageSquare },
+  { label: "Agent Chat", path: "/dashboard/agent-chat", icon: Bot },
+];
 
 export function Navigation({ user }: { user: User }) {
   const signOut = useSignOut();
-  const matchRoute = useMatchRoute();
   const navigate = useNavigate();
-  const isDashboardPath = matchRoute({ to: DashboardRoute.fullPath });
-  const isCrmPath = matchRoute({ to: CrmRoute.fullPath });
-  const isDocumentsPath = matchRoute({ to: DocumentsRoute.fullPath });
-  const isAnalyticsPath = matchRoute({ to: AnalyticsRoute.fullPath });
-  const isAgentChatPath = matchRoute({ to: AgentChatRoute.fullPath });
-  const isChatPath = matchRoute({ to: "/chat" });
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isActive = (path: string) => {
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard" || location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
 
   if (!user) {
     return null;
   }
 
   return (
-    <nav className="sticky top-0 z-50 flex w-full flex-col border-b border-border bg-card px-6">
-      <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between py-3">
+    <nav className="sticky top-0 z-50 w-full glass border-b border-glass-border">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between px-4 py-2 lg:px-6">
         <div className="flex h-10 items-center gap-2">
-          <Link
-            to={DashboardRoute.fullPath}
-            className="flex h-10 items-center gap-1"
-          >
+          <Link to="/dashboard" className="flex h-10 items-center gap-1">
             <Logo />
           </Link>
-          <Slash className="h-6 w-6 -rotate-12 stroke-[1.5px] text-primary/10" />
-          <OrganizationSwitcher user={user} />
+          <Slash className="h-6 w-6 -rotate-12 stroke-[1.5px] text-primary/10 hidden sm:block" />
+          <div className="hidden sm:block">
+            <OrganizationSwitcher user={user} />
+          </div>
         </div>
 
-        <div className="flex h-10 items-center gap-3">
-          <a
-            href="https://github.com/Modern-Phase/mp-ai-starter-kit"
-            className={cn(
-              `${buttonVariants({ variant: "outline", size: "sm" })} group hidden h-8 gap-2 rounded-full bg-transparent px-2 pr-2.5 md:flex`,
-            )}
+        <div className="hidden lg:flex h-10 items-center gap-1">
+          {navItems.map((item) => {
+            const active = isActive(item.path);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="flex h-10 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-primary"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-            </svg>
-            <span className="text-sm text-primary/60 transition group-hover:text-primary group-focus:text-primary">
-              Documentation
-            </span>
-          </a>
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 rounded-full">
                 {user.avatarUrl ? (
                   <img
-                    className="min-h-8 min-w-8 rounded-full object-cover"
+                    className="h-8 w-8 rounded-full object-cover"
                     alt={user.username ?? user.email}
                     src={user.avatarUrl}
                   />
                 ) : (
-                  <span className="min-h-8 min-w-8 rounded-full bg-gradient-to-br from-lime-400 from-10% via-cyan-300 to-blue-500" />
+                  <span className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center text-white text-sm font-medium">
+                    {(user.username || user.email || "U")[0].toUpperCase()}
+                  </span>
                 )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               sideOffset={8}
-              className="fixed -right-4 min-w-56 bg-card p-2"
+              className="fixed -right-2 min-w-56 glass p-2"
             >
               <DropdownMenuItem className="group flex-col items-start focus:bg-transparent">
-                <p className="text-sm font-medium text-primary/80 group-hover:text-primary group-focus:text-primary">
+                <p className="text-sm font-medium text-foreground">
                   {user?.username || ""}
                 </p>
-                <p className="text-sm text-primary/60">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="mx-0 my-2" />
 
               <DropdownMenuItem
                 className="group h-9 w-full cursor-pointer justify-between rounded-md px-2"
-                onClick={() => navigate({ to: SettingsRoute.fullPath })}
+                onClick={() => navigate({ to: "/dashboard/settings" })}
               >
-                <span className="text-sm text-primary/60 group-hover:text-primary group-focus:text-primary">
+                <span className="text-sm text-muted-foreground group-hover:text-foreground">
                   Settings
                 </span>
-                <Settings className="h-[18px] w-[18px] stroke-[1.5px] text-primary/60 group-hover:text-primary group-focus:text-primary" />
+                <Settings className="h-[18px] w-[18px] stroke-[1.5px] text-muted-foreground group-hover:text-foreground" />
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -110,7 +147,7 @@ export function Navigation({ user }: { user: User }) {
                   "group flex h-9 justify-between rounded-md px-2 hover:bg-transparent",
                 )}
               >
-                <span className="w-full text-sm text-primary/60 group-hover:text-primary group-focus:text-primary">
+                <span className="w-full text-sm text-muted-foreground group-hover:text-foreground">
                   Theme
                 </span>
                 <ThemeSwitcher />
@@ -121,7 +158,7 @@ export function Navigation({ user }: { user: User }) {
                   "group flex h-9 justify-between rounded-md px-2 hover:bg-transparent",
                 )}
               >
-                <span className="w-full text-sm text-primary/60 group-hover:text-primary group-focus:text-primary">
+                <span className="w-full text-sm text-muted-foreground group-hover:text-foreground">
                   Language
                 </span>
                 <LanguageSwitcher />
@@ -133,108 +170,45 @@ export function Navigation({ user }: { user: User }) {
                 className="group h-9 w-full cursor-pointer justify-between rounded-md px-2"
                 onClick={() => signOut()}
               >
-                <span className="text-sm text-primary/60 group-hover:text-primary group-focus:text-primary">
+                <span className="text-sm text-muted-foreground group-hover:text-foreground">
                   Log Out
                 </span>
-                <LogOut className="h-[18px] w-[18px] stroke-[1.5px] text-primary/60 group-hover:text-primary group-focus:text-primary" />
+                <LogOut className="h-[18px] w-[18px] stroke-[1.5px] text-muted-foreground group-hover:text-foreground" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-3">
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isDashboardPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to={DashboardRoute.fullPath}
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            Mission Control
-          </Link>
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-border animate-fade-down">
+          <div className="px-4 py-3 space-y-1">
+            <div className="sm:hidden py-2">
+              <OrganizationSwitcher user={user} />
+            </div>
+            {navItems.map((item) => {
+              const active = isActive(item.path);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isCrmPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to={CrmRoute.fullPath}
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            CRM
-          </Link>
-        </div>
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isDocumentsPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to={DocumentsRoute.fullPath}
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            Documents
-          </Link>
-        </div>
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isAnalyticsPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to={AnalyticsRoute.fullPath}
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            Analytics
-          </Link>
-        </div>
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isChatPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to="/chat"
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            AI Chat
-          </Link>
-        </div>
-        <div
-          className={cn(
-            `flex h-12 items-center border-b-2`,
-            isAgentChatPath ? "border-primary" : "border-transparent",
-          )}
-        >
-          <Link
-            to={AgentChatRoute.fullPath}
-            className={cn(
-              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
-            )}
-          >
-            Agent Chat
-          </Link>
-        </div>
-      </div>
+      )}
     </nav>
   );
 }

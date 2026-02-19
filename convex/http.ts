@@ -3,7 +3,7 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { ERRORS } from "../errors";
-import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL } from "./env";
+import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL, WEBHOOK_SECRET } from "./env";
 import { RATE_LIMITS } from "./rateLimit";
 import { canSendChatMessage } from "./usage";
 import {
@@ -731,6 +731,111 @@ http.route({
         "Access-Control-Allow-Headers": "Content-Type",
       },
     });
+  }),
+});
+
+// Agent response webhook from VPS Orchestrator
+http.route({
+  path: "/webhooks/agent-response",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Webhook-Signature",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/agent-response",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.text();
+      const signature = request.headers.get("X-Webhook-Signature") || "";
+
+      // Verify HMAC signature if webhook secret is configured
+      if (WEBHOOK_SECRET) {
+        const match = signature.match(/^t=(\d+),s=([a-f0-9]+)$/);
+        if (!match) {
+          return new Response(JSON.stringify({ error: "Missing or invalid signature" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const [, timestamp, sig] = match;
+
+        // Reject if timestamp is more than 5 minutes old (replay protection)
+        const age = Date.now() - parseInt(timestamp);
+        if (age > 5 * 60 * 1000 || age < -60_000) {
+          return new Response(JSON.stringify({ error: "Signature expired" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Compute expected signature
+        const key = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(WEBHOOK_SECRET),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"],
+        );
+        const expected = await crypto.subtle.sign(
+          "HMAC",
+          key,
+          new TextEncoder().encode(`${timestamp}.${body}`),
+        );
+        const expectedHex = Array.from(new Uint8Array(expected))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+        if (sig !== expectedHex) {
+          return new Response(JSON.stringify({ error: "Invalid signature" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      const payload = JSON.parse(body);
+      const { agentId, orgId, messageId, content, state, runId } = payload;
+
+      if (!agentId || !state || !runId) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: agentId, state, runId" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      await ctx.runMutation(internal.agentChatWebhook.receiveAgentResponse, {
+        agentId,
+        orgId: orgId || "",
+        messageId: messageId || "",
+        content: content || "",
+        state,
+        runId,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[Agent Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }),
 });
 

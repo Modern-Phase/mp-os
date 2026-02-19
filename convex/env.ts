@@ -9,3 +9,4 @@ export const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
 export const OPEN_ROUTER = process.env.OPEN_ROUTER;
 export const VPS_ORCHESTRATOR_URL = process.env.VPS_ORCHESTRATOR_URL;
 export const VPS_API_KEY = process.env.VPS_API_KEY;
+export const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;

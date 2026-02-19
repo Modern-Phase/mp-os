@@ -51,26 +51,33 @@ export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextP
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {projects.map((project) => (
-                <div key={project._id} className="p-3 rounded-lg border space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">{project.name}</h4>
-                      <p className="text-xs text-muted-foreground">{project.client}</p>
-                    </div>
-                    <StatusDot status={project.status} />
-                  </div>
-                  <Progress value={project.progress} className="h-1.5" />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      {project.agents.map((agentId: string) => (
-                        <AgentEmoji key={agentId} agentId={agentId} />
-                      ))}
-                    </div>
-                    <span>{project.progress}%</span>
-                  </div>
+              {projects.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <Folder className="h-8 w-8 opacity-10 mb-2" />
+                  <p className="text-xs">No active projects</p>
                 </div>
-              ))}
+              ) : (
+                projects.map((project) => (
+                  <div key={project._id} className="p-3 rounded-lg border space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm">{project.name}</h4>
+                        <p className="text-xs text-muted-foreground">{project.client}</p>
+                      </div>
+                      <StatusDot status={project.status} />
+                    </div>
+                    <Progress value={project.progress} className="h-1.5" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        {project.agents.map((agentId: string) => (
+                          <AgentEmoji key={agentId} agentId={agentId} />
+                        ))}
+                      </div>
+                      <span>{project.progress}%</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -110,18 +117,25 @@ export function GlobalContextPanel({ orgId, projects, activity }: GlobalContextP
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {activity.slice(0, 5).map((item: any) => (
-                <div key={item._id} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50">
-                  <AgentEmoji agentId={item.agentId} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">{item.action.replace(/_/g, ' ')}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.target}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(item.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
+              {activity.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <Activity className="h-8 w-8 opacity-10 mb-2" />
+                  <p className="text-xs">No recent activity</p>
                 </div>
-              ))}
+              ) : (
+                activity.slice(0, 5).map((item: any) => (
+                  <div key={item._id} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50">
+                    <AgentEmoji agentId={item.agentId} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{item.action.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.target}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(item.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

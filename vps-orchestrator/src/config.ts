@@ -13,6 +13,13 @@ export const CONFIG = {
   serviceName: process.env.OPENCLAW_SERVICE || "openclaw",
   // Gateway port (single instance)
   gatewayPort: parseInt(process.env.OPENCLAW_GATEWAY_PORT || "18789"),
+  // WebSocket bridge: webhook callback to Convex
+  webhookSecret: process.env.WEBHOOK_SECRET || "",
+  convexSiteUrl: process.env.CONVEX_SITE_URL || "",
+  // Auth token for OpenClaw Gateway WS connection
+  gatewayToken: process.env.OPENCLAW_GATEWAY_TOKEN || "",
+  // Device identity for gateway auth (Ed25519 keypair)
+  deviceIdentityPath: process.env.OPENCLAW_DEVICE_IDENTITY || "/home/openclaw/.openclaw/identity/device.json",
 } as const;
 
 /** Validate agent ID: lowercase alphanumeric + hyphens, starts with a letter, max 64 chars */

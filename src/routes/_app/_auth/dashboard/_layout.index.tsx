@@ -1,96 +1,94 @@
 // src/routes/_app/_auth/dashboard/_layout.index.tsx
 // Mission Control — Multi-Agent Dashboard with live VPS management
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { createFileRoute } from "@tanstack/react-router"
-import { useQuery as useConvexQuery, useAction, useMutation } from "convex/react"
-import { api } from "~/convex/_generated/api"
-import { Id } from "~/convex/_generated/dataModel"
-import { Button } from "@/ui/button"
-import { ScrollArea } from "@/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs"
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import {
-  LayoutGrid,
-  Users,
-  Plus,
-  RefreshCw,
-  Loader2,
-} from "lucide-react"
-import { InstanceCard } from "@/components/agents/InstanceCard"
-import { TaskBoard } from "@/components/agents/TaskBoard"
-import { GlobalTaskBoard } from "@/components/agents/GlobalTaskBoard"
-import { SoulEditor } from "@/components/agents/SoulEditor"
-import { SessionViewer } from "@/components/agents/SessionViewer"
-import { LogViewer } from "@/components/agents/LogViewer"
-import { AgentChat } from "@/components/agents/AgentChat"
-import { GlobalContextPanel } from "@/components/agents/GlobalContextPanel"
-import { VpsConnectionStatus } from "@/components/agents/VpsConnectionStatus"
-import { InstanceCreateWizard } from "@/components/agents/InstanceCreateWizard"
-import siteConfig from "~/site.config"
+  useQuery as useConvexQuery,
+  useAction,
+  useMutation,
+} from "convex/react";
+import { api } from "~/convex/_generated/api";
+import { Id } from "~/convex/_generated/dataModel";
+import { Button } from "@/ui/button";
+import { ScrollArea } from "@/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
+import { LayoutGrid, Users, Plus, RefreshCw, Loader2 } from "lucide-react";
+import { InstanceCard } from "@/components/agents/InstanceCard";
+import { TaskBoard } from "@/components/agents/TaskBoard";
+import { GlobalTaskBoard } from "@/components/agents/GlobalTaskBoard";
+import { SoulEditor } from "@/components/agents/SoulEditor";
+import { SessionViewer } from "@/components/agents/SessionViewer";
+import { LogViewer } from "@/components/agents/LogViewer";
+import { AgentChat } from "@/components/agents/AgentChat";
+import { GlobalContextPanel } from "@/components/agents/GlobalContextPanel";
+import { VpsConnectionStatus } from "@/components/agents/VpsConnectionStatus";
+import { InstanceCreateWizard } from "@/components/agents/InstanceCreateWizard";
+import siteConfig from "~/site.config";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/")({
   component: MissionControlPage,
   beforeLoad: () => ({
     title: `${siteConfig.siteTitle} - Mission Control`,
   }),
-})
+});
 
 function MissionControlPage() {
-  const currentUser = useConvexQuery(api.app.getCurrentUser)
-  const orgId = currentUser?.memberships?.[0]?.orgId as Id<"organizations"> | undefined
+  const currentUser = useConvexQuery(api.app.getCurrentUser);
+  const orgId = currentUser?.memberships?.[0]?.orgId as
+    | Id<"organizations">
+    | undefined;
 
   // Auto-create personal org if user has no memberships
-  const ensurePersonalOrg = useMutation(api.organizations.ensurePersonalOrg)
-  const [orgEnsured, setOrgEnsured] = useState(false)
+  const ensurePersonalOrg = useMutation(api.organizations.ensurePersonalOrg);
+  const [orgEnsured, setOrgEnsured] = useState(false);
   useEffect(() => {
     if (currentUser && !orgId && !orgEnsured) {
-      setOrgEnsured(true)
-      ensurePersonalOrg().catch(console.error)
+      setOrgEnsured(true);
+      ensurePersonalOrg().catch(console.error);
     }
-  }, [currentUser, orgId, orgEnsured, ensurePersonalOrg])
+  }, [currentUser, orgId, orgEnsured, ensurePersonalOrg]);
 
   // Agent definitions (static metadata)
   const agents = useConvexQuery(
     api.agents.getAgents,
     orgId ? { orgId } : "skip",
-  )
+  );
 
   // VPS instances (live state, reactive)
-  const vpsInstances = useConvexQuery(api.vpsOrchestrator.getVpsInstances)
+  const vpsInstances = useConvexQuery(api.vpsOrchestrator.getVpsInstances);
 
   // Projects and activity for context panel
   const projects = useConvexQuery(
     api.agents.getProjects,
     orgId ? { orgId } : "skip",
-  )
+  );
   const recentActivity = useConvexQuery(
     api.agents.getRecentActivity,
     orgId ? { orgId, limit: 20 } : "skip",
-  )
+  );
 
   // Action to sync VPS instances
-  const listInstances = useAction(api.vpsOrchestrator.listInstances)
+  const listInstances = useAction(api.vpsOrchestrator.listInstances);
 
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("tasks")
-  const [showCreateWizard, setShowCreateWizard] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("tasks");
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Merge agent definitions with VPS live data
   const mergedAgents = useMemo(() => {
-    if (!agents) return []
+    if (!agents) return [];
     return agents.map((agent: any) => {
-      const vps = vpsInstances?.find(
-        (i: any) => i.agentId === agent.agentId,
-      )
-      return { ...agent, vps }
-    })
-  }, [agents, vpsInstances])
+      const vps = vpsInstances?.find((i: any) => i.agentId === agent.agentId);
+      return { ...agent, vps };
+    });
+  }, [agents, vpsInstances]);
 
   // Also include VPS instances that don't have a matching agent definition
   const unmatchedInstances = useMemo(() => {
-    if (!vpsInstances) return []
-    const agentIds = new Set(agents?.map((a: any) => a.agentId) || [])
+    if (!vpsInstances) return [];
+    const agentIds = new Set(agents?.map((a: any) => a.agentId) || []);
     return vpsInstances
       .filter((i: any) => !agentIds.has(i.agentId))
       .map((i: any) => ({
@@ -102,47 +100,47 @@ function MissionControlPage() {
         department: "custom",
         expertise: [],
         vps: i,
-      }))
-  }, [agents, vpsInstances])
+      }));
+  }, [agents, vpsInstances]);
 
   const allAgents = useMemo(
     () => [...mergedAgents, ...unmatchedInstances],
     [mergedAgents, unmatchedInstances],
-  )
+  );
 
   // Sync VPS state on mount and periodically
   const syncVps = useCallback(async () => {
-    setIsSyncing(true)
+    setIsSyncing(true);
     try {
-      await listInstances()
+      await listInstances();
     } catch (err) {
-      console.error("Failed to sync VPS instances:", err)
+      console.error("Failed to sync VPS instances:", err);
     } finally {
-      setIsSyncing(false)
+      setIsSyncing(false);
     }
-  }, [listInstances])
+  }, [listInstances]);
 
   useEffect(() => {
-    syncVps()
-    const interval = setInterval(syncVps, 15000)
-    return () => clearInterval(interval)
-  }, [syncVps])
+    syncVps();
+    const interval = setInterval(syncVps, 15000);
+    return () => clearInterval(interval);
+  }, [syncVps]);
 
   const selectedAgentData = selectedAgent
     ? allAgents.find((a: any) => a.agentId === selectedAgent)
-    : null
+    : null;
 
   if (!currentUser) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   const activeCount = allAgents.filter(
     (a: any) => a.vps?.systemdState === "active",
-  ).length
+  ).length;
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -244,7 +242,7 @@ function MissionControlPage() {
               </div>
 
               {/* Tabs */}
-              <div className="px-6 pt-3">
+              <div className="px-6 pt-3 flex-1 min-h-0 flex flex-col">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -254,37 +252,38 @@ function MissionControlPage() {
                     <TabsTrigger value="logs">Logs</TabsTrigger>
                   </TabsList>
 
-                  <div className="mt-4 overflow-auto flex-1">
-                    <TabsContent value="tasks">
+                  <div className="mt-4 flex-1 min-h-0 overflow-hidden">
+                    <TabsContent className="h-full" value="tasks">
                       {orgId && (
-                        <TaskBoard agent={selectedAgentData} orgId={orgId} />
+                        <TaskBoard
+                          agent={selectedAgentData}
+                          orgId={orgId}
+                          agents={allAgents}
+                        />
                       )}
                     </TabsContent>
 
-                    <TabsContent value="soul">
+                    <TabsContent className="h-full" value="soul">
                       <SoulEditor
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
                       />
                     </TabsContent>
 
-                    <TabsContent value="sessions">
+                    <TabsContent className="h-full" value="sessions">
                       <SessionViewer
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
                       />
                     </TabsContent>
 
-                    <TabsContent value="chat">
+                    <TabsContent className="h-full" value="chat">
                       {orgId && (
-                        <AgentChat
-                          agent={selectedAgentData}
-                          orgId={orgId}
-                        />
+                        <AgentChat agent={selectedAgentData} orgId={orgId} />
                       )}
                     </TabsContent>
 
-                    <TabsContent value="logs">
+                    <TabsContent className="h-full" value="logs">
                       <LogViewer
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
@@ -337,5 +336,5 @@ function MissionControlPage() {
         />
       )}
     </div>
-  )
+  );
 }

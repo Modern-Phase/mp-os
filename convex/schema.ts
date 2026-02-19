@@ -720,7 +720,8 @@ const schema = defineSchema({
   })
     .index("orgId", ["orgId"])
     .index("orgId_status", ["orgId", "status"])
-    .index("agentId", ["agentId"]),
+    .index("agentId", ["agentId"])
+    .index("messageId", ["messageId"]),
 
   // Chat sessions (conversations between user and agent)
   agentChatSessions: defineTable({

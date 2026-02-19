@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { listAgentSessions, readSession } from "../services/filesystem";
-import { CONFIG, validateAgentId } from "../config";
+import { validateAgentId } from "../config";
+import { sendMessage, getStatus } from "../services/gateway-ws";
 import type { GatewayMessageRequest } from "../types";
 
 const app = new Hono();
@@ -55,14 +56,14 @@ app.get("/instances/:id/sessions/:sessionId", async (c) => {
   }
 });
 
-// Send message to agent via Gateway
+// Send message to agent via Gateway WebSocket
 app.post("/instances/:id/message", async (c) => {
   const { id } = c.req.param();
   if (!validateAgentId(id)) {
     return c.json({ error: "Invalid agent ID" }, 400);
   }
 
-  const body = await c.req.json<GatewayMessageRequest>();
+  const body = await c.req.json<GatewayMessageRequest & { messageId?: string; orgId?: string }>();
 
   if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "Missing message field" }, 400);
@@ -72,59 +73,40 @@ app.post("/instances/:id/message", async (c) => {
     return c.json({ error: "Message exceeds 64KB limit" }, 413);
   }
 
-  const sessionId = body.sessionId || `agent:${id}:main`;
-  if (!SESSION_ID_RE.test(sessionId)) {
+  const sessionKey = body.sessionId || `agent:main:${id}`;
+  if (!SESSION_ID_RE.test(sessionKey)) {
     return c.json({ error: "Invalid session ID format" }, 400);
   }
 
-  // Check gateway is reachable
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    await fetch(`http://127.0.0.1:${CONFIG.gatewayPort}/`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-  } catch {
+  // Check WS connection status
+  const status = getStatus();
+  if (!status.connected || !status.handshake) {
     return c.json(
-      { error: "Gateway is not reachable. Is the service running?" },
+      { error: "Gateway WebSocket not connected or handshake pending. Is the service running?" },
       503,
     );
   }
 
   try {
-    // Proxy message to OpenClaw Gateway
-    const response = await fetch(
-      `http://127.0.0.1:${CONFIG.gatewayPort}/api/message`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionId,
-          content: body.message,
-        }),
-      },
-    );
+    const runId = await sendMessage(id, sessionKey, body.message, {
+      agentId: id,
+      orgId: body.orgId || "",
+      messageId: body.messageId || "",
+    });
 
-    if (!response.ok) {
-      const text = await response.text();
-      return c.json(
-        { error: `Gateway returned ${response.status}: ${text}` },
-        502,
-      );
-    }
-
-    const result = await response.json();
     return c.json({
       success: true,
-      sessionId,
-      response: result,
+      status: "dispatched",
+      sessionKey,
+      runId,
     });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[sessions] Failed to send message to Gateway:`, msg);
     return c.json(
       {
         error: "Failed to send message to Gateway",
-        details: error instanceof Error ? error.message : String(error),
+        details: msg,
       },
       502,
     );

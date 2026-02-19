@@ -8,6 +8,7 @@ import soulRoutes from "./routes/soul";
 import sessionRoutes from "./routes/sessions";
 import logRoutes from "./routes/logs";
 import { CONFIG } from "./config";
+import { connect as connectGateway, disconnect as disconnectGateway } from "./services/gateway-ws";
 
 const app = new Hono();
 
@@ -62,6 +63,24 @@ console.log(`OpenClaw home: ${CONFIG.openclawHome}`);
 console.log(
   `API key: ${CONFIG.apiKey ? "configured" : "NOT SET (all requests will fail auth)"}`,
 );
+console.log(
+  `Webhook: ${CONFIG.convexSiteUrl ? CONFIG.convexSiteUrl : "NOT SET (agent responses won't be delivered)"}`,
+);
+
+// Connect to OpenClaw Gateway via WebSocket
+connectGateway();
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down...");
+  disconnectGateway();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down...");
+  disconnectGateway();
+  process.exit(0);
+});
 
 export default {
   port: CONFIG.port,

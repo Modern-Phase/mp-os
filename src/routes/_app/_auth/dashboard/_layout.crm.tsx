@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Loader2, Plus, Kanban, Table2 } from 'lucide-react'
+import { Loader2, Plus, Kanban, Table2, Database } from 'lucide-react'
 import { PipelineBoard } from '@/components/crm/PipelineBoard'
 import { LeadsTable } from '@/components/crm/LeadsTable'
 import { LeadDetailDialog } from '@/components/crm/LeadDetailDialog'
@@ -64,9 +64,11 @@ function CrmPage() {
   const pipelineStats = useConvexQuery(api.crm.getPipelineStats, orgId ? { orgId } : 'skip')
 
   const createLead = useMutation(api.crm.createLead)
+  const seedCrmData = useMutation(api.crm.seedCrmData)
 
   const [activeView, setActiveView] = useState('pipeline')
   const [addLeadOpen, setAddLeadOpen] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
   const [newLead, setNewLead] = useState({
     company: '',
     contactName: '',
@@ -128,6 +130,32 @@ function CrmPage() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+        {totalLeads === 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isSeeding || !orgId}
+            onClick={async () => {
+              if (!orgId) return
+              setIsSeeding(true)
+              try {
+                await seedCrmData({ orgId })
+              } catch (err) {
+                console.error('Failed to seed CRM data:', err)
+              } finally {
+                setIsSeeding(false)
+              }
+            }}
+          >
+            {isSeeding ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Database className="w-4 h-4 mr-2" />
+            )}
+            Load Demo Data
+          </Button>
+        )}
         <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
@@ -204,6 +232,7 @@ function CrmPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </header>
 
       {/* View tabs + content */}

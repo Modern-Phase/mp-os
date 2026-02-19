@@ -338,6 +338,77 @@ export const handoffTask = mutation({
   },
 });
 
+export const updateTask = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    priority: v.optional(priorityValidator),
+    agentId: v.optional(agentIdValidator),
+    dueDate: v.optional(v.number()),
+    tags: v.optional(v.array(v.string())),
+    context: v.optional(v.string()),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+
+    const patch: Record<string, any> = {};
+    if (args.title !== undefined) patch.title = args.title;
+    if (args.description !== undefined) patch.description = args.description;
+    if (args.priority !== undefined) patch.priority = args.priority;
+    if (args.agentId !== undefined) patch.agentId = args.agentId;
+    if (args.dueDate !== undefined) patch.dueDate = args.dueDate;
+    if (args.tags !== undefined) patch.tags = args.tags;
+    if (args.context !== undefined) patch.context = args.context;
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.taskId, patch);
+    }
+
+    await ctx.db.insert("agentActivity", {
+      orgId: task.orgId,
+      agentId: args.agentId || task.agentId,
+      action: "task_updated",
+      target: args.title || task.title,
+      taskId: args.taskId,
+      timestamp: Date.now(),
+    });
+
+    return true;
+  },
+});
+
+export const deleteTask = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+
+    await ctx.db.delete(args.taskId);
+
+    await ctx.db.insert("agentActivity", {
+      orgId: task.orgId,
+      agentId: task.agentId,
+      action: "task_deleted",
+      target: task.title,
+      timestamp: Date.now(),
+    });
+
+    return true;
+  },
+});
+
 export const createProject = mutation({
   args: {
     orgId: v.id("organizations"),
