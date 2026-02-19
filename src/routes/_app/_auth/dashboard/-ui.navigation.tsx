@@ -17,6 +17,7 @@ import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import { Route as DashboardRoute } from "@/routes/_app/_auth/dashboard/_layout.index";
 import { Route as DocumentsRoute } from "@/routes/_app/_auth/dashboard/_layout.documents";
 import { Route as AnalyticsRoute } from "@/routes/_app/_auth/dashboard/_layout.analytics";
+import { Route as CrmRoute } from "@/routes/_app/_auth/dashboard/_layout.crm";
 import { Route as AgentChatRoute } from "@/routes/_app/_auth/dashboard/_layout.agent-chat";
 import { Route as SettingsRoute } from "@/routes/_app/_auth/dashboard/_layout.settings.index";
 import { User } from "~/types";
@@ -26,6 +27,7 @@ export function Navigation({ user }: { user: User }) {
   const matchRoute = useMatchRoute();
   const navigate = useNavigate();
   const isDashboardPath = matchRoute({ to: DashboardRoute.fullPath });
+  const isCrmPath = matchRoute({ to: CrmRoute.fullPath });
   const isDocumentsPath = matchRoute({ to: DocumentsRoute.fullPath });
   const isAnalyticsPath = matchRoute({ to: AnalyticsRoute.fullPath });
   const isAgentChatPath = matchRoute({ to: AgentChatRoute.fullPath });
@@ -155,6 +157,21 @@ export function Navigation({ user }: { user: User }) {
             )}
           >
             Mission Control
+          </Link>
+        </div>
+        <div
+          className={cn(
+            `flex h-12 items-center border-b-2`,
+            isCrmPath ? "border-primary" : "border-transparent",
+          )}
+        >
+          <Link
+            to={CrmRoute.fullPath}
+            className={cn(
+              `${buttonVariants({ variant: "ghost", size: "sm" })} text-primary/80`,
+            )}
+          >
+            CRM
           </Link>
         </div>
         <div

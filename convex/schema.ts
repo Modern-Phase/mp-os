@@ -160,6 +160,68 @@ export const priorityValidator = v.union(
 );
 export type Priority = Infer<typeof priorityValidator>;
 
+// CRM - Pipeline and lead management
+export const PIPELINE_STAGES = {
+  NEW_LEAD: "new_lead",
+  QUALIFIED: "qualified",
+  DISCOVERY: "discovery",
+  PROPOSAL: "proposal",
+  NEGOTIATION: "negotiation",
+  WON: "won",
+  LOST: "lost",
+} as const;
+
+export const pipelineStageValidator = v.union(
+  v.literal(PIPELINE_STAGES.NEW_LEAD),
+  v.literal(PIPELINE_STAGES.QUALIFIED),
+  v.literal(PIPELINE_STAGES.DISCOVERY),
+  v.literal(PIPELINE_STAGES.PROPOSAL),
+  v.literal(PIPELINE_STAGES.NEGOTIATION),
+  v.literal(PIPELINE_STAGES.WON),
+  v.literal(PIPELINE_STAGES.LOST),
+);
+export type PipelineStage = Infer<typeof pipelineStageValidator>;
+
+export const LEAD_SOURCES = {
+  COLD_OUTREACH: "cold_outreach",
+  INBOUND: "inbound",
+  REFERRAL: "referral",
+  LINKEDIN: "linkedin",
+  WEBSITE: "website",
+  OTHER: "other",
+} as const;
+
+export const leadSourceValidator = v.union(
+  v.literal(LEAD_SOURCES.COLD_OUTREACH),
+  v.literal(LEAD_SOURCES.INBOUND),
+  v.literal(LEAD_SOURCES.REFERRAL),
+  v.literal(LEAD_SOURCES.LINKEDIN),
+  v.literal(LEAD_SOURCES.WEBSITE),
+  v.literal(LEAD_SOURCES.OTHER),
+);
+export type LeadSource = Infer<typeof leadSourceValidator>;
+
+export const CRM_ACTIVITY_TYPES = {
+  CALL: "call",
+  EMAIL: "email",
+  MEETING: "meeting",
+  NOTE: "note",
+  PROPOSAL_SENT: "proposal_sent",
+  CONTRACT_SENT: "contract_sent",
+  STATUS_CHANGE: "status_change",
+} as const;
+
+export const crmActivityTypeValidator = v.union(
+  v.literal(CRM_ACTIVITY_TYPES.CALL),
+  v.literal(CRM_ACTIVITY_TYPES.EMAIL),
+  v.literal(CRM_ACTIVITY_TYPES.MEETING),
+  v.literal(CRM_ACTIVITY_TYPES.NOTE),
+  v.literal(CRM_ACTIVITY_TYPES.PROPOSAL_SENT),
+  v.literal(CRM_ACTIVITY_TYPES.CONTRACT_SENT),
+  v.literal(CRM_ACTIVITY_TYPES.STATUS_CHANGE),
+);
+export type CrmActivityType = Infer<typeof crmActivityTypeValidator>;
+
 export const PROJECT_STATUSES = {
   PLANNING: "planning",
   IN_PROGRESS: "in_progress",
@@ -631,7 +693,8 @@ const schema = defineSchema({
     content: v.string(),
     role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
     sessionId: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("delivered"), v.literal("responded")),
+    status: v.union(v.literal("pending"), v.literal("delivered"), v.literal("responded"), v.literal("streaming")),
+    runId: v.optional(v.string()),
     replyTo: v.optional(v.id("agentChatMessages")),
     metadata: v.optional(v.any()),
     timestamp: v.number(),
@@ -640,6 +703,7 @@ const schema = defineSchema({
     .index("agentId", ["agentId"])
     .index("orgId_agentId", ["orgId", "agentId"])
     .index("sessionId", ["sessionId"])
+    .index("runId", ["runId"])
     .index("timestamp", ["timestamp"]),
 
   // Chat queue (for processing agent responses)
@@ -695,6 +759,50 @@ const schema = defineSchema({
     .index("orgId_status", ["orgId", "status"])
     .index("agentId", ["agentId"])
     .index("sessionId", ["sessionId"]),
+
+  // CRM - Leads/Deals pipeline
+  crmLeads: defineTable({
+    orgId: v.id("organizations"),
+    company: v.string(),
+    contactName: v.string(),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactLinkedin: v.optional(v.string()),
+    contactTitle: v.optional(v.string()),
+    stage: pipelineStageValidator,
+    source: leadSourceValidator,
+    value: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    description: v.optional(v.string()),
+    nextStep: v.optional(v.string()),
+    nextFollowUp: v.optional(v.number()),
+    assignedAgent: v.optional(agentIdValidator),
+    tags: v.optional(v.array(v.string())),
+    projectId: v.optional(v.id("agentProjects")),
+    closedAt: v.optional(v.number()),
+    lostReason: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_stage", ["orgId", "stage"])
+    .index("orgId_assignedAgent", ["orgId", "assignedAgent"])
+    .index("orgId_source", ["orgId", "source"]),
+
+  // CRM - Activity timeline per lead
+  crmActivities: defineTable({
+    orgId: v.id("organizations"),
+    leadId: v.id("crmLeads"),
+    type: crmActivityTypeValidator,
+    title: v.string(),
+    description: v.optional(v.string()),
+    agentId: v.optional(agentIdValidator),
+    userId: v.id("users"),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("leadId", ["leadId"])
+    .index("orgId", ["orgId"])
+    .index("leadId_timestamp", ["leadId", "timestamp"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

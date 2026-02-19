@@ -10,11 +10,13 @@
 
 import type * as admin from "../admin.js";
 import type * as agentChat from "../agentChat.js";
+import type * as agentChatWebhook from "../agentChatWebhook.js";
 import type * as agents from "../agents.js";
 import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
 import type * as chat from "../chat.js";
 import type * as collections from "../collections.js";
+import type * as crm from "../crm.js";
 import type * as doclingParse from "../doclingParse.js";
 import type * as documents from "../documents.js";
 import type * as email_index from "../email/index.js";
@@ -51,11 +53,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   agentChat: typeof agentChat;
+  agentChatWebhook: typeof agentChatWebhook;
   agents: typeof agents;
   app: typeof app;
   auditLog: typeof auditLog;
   chat: typeof chat;
   collections: typeof collections;
+  crm: typeof crm;
   doclingParse: typeof doclingParse;
   documents: typeof documents;
   "email/index": typeof email_index;

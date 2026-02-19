@@ -27,6 +27,7 @@ import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_ap
 import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
+import { Route as AppAuthDashboardLayoutCrmRouteImport } from './routes/_app/_auth/dashboard/_layout.crm'
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
 import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
@@ -127,6 +128,12 @@ const AppAuthDashboardLayoutDocumentsRoute =
     path: '/documents',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutCrmRoute =
+  AppAuthDashboardLayoutCrmRouteImport.update({
+    id: '/crm',
+    path: '/crm',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutCheckoutRoute =
   AppAuthDashboardLayoutCheckoutRouteImport.update({
     id: '/checkout',
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -193,6 +201,7 @@ export interface FileRoutesByTo {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -218,6 +227,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/_app/_auth/dashboard/_layout/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/_app/_auth/dashboard/_layout/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/crm'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
     | '/dashboard/mission-control'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/crm'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
     | '/dashboard/mission-control'
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/agent-chat'
     | '/_app/_auth/dashboard/_layout/analytics'
     | '/_app/_auth/dashboard/_layout/checkout'
+    | '/_app/_auth/dashboard/_layout/crm'
     | '/_app/_auth/dashboard/_layout/documents'
     | '/_app/_auth/dashboard/_layout/gdpr'
     | '/_app/_auth/dashboard/_layout/mission-control'
@@ -433,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutDocumentsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/crm': {
+      id: '/_app/_auth/dashboard/_layout/crm'
+      path: '/crm'
+      fullPath: '/dashboard/crm'
+      preLoaderRoute: typeof AppAuthDashboardLayoutCrmRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/checkout': {
       id: '/_app/_auth/dashboard/_layout/checkout'
       path: '/checkout'
@@ -493,6 +513,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutAgentChatRoute: typeof AppAuthDashboardLayoutAgentChatRoute
   AppAuthDashboardLayoutAnalyticsRoute: typeof AppAuthDashboardLayoutAnalyticsRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
+  AppAuthDashboardLayoutCrmRoute: typeof AppAuthDashboardLayoutCrmRoute
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
   AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
@@ -505,6 +526,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutAgentChatRoute: AppAuthDashboardLayoutAgentChatRoute,
     AppAuthDashboardLayoutAnalyticsRoute: AppAuthDashboardLayoutAnalyticsRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
+    AppAuthDashboardLayoutCrmRoute: AppAuthDashboardLayoutCrmRoute,
     AppAuthDashboardLayoutDocumentsRoute: AppAuthDashboardLayoutDocumentsRoute,
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
     AppAuthDashboardLayoutMissionControlRoute:
