@@ -243,8 +243,12 @@ function MissionControlPage() {
 
               {/* Tabs */}
               <div className="px-6 pt-3 flex-1 min-h-0 flex flex-col">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="flex-1 min-h-0 flex flex-col"
+                >
+                  <TabsList className="flex-shrink-0">
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                     <TabsTrigger value="soul">SOUL.md</TabsTrigger>
                     <TabsTrigger value="sessions">Sessions</TabsTrigger>
@@ -252,8 +256,8 @@ function MissionControlPage() {
                     <TabsTrigger value="logs">Logs</TabsTrigger>
                   </TabsList>
 
-                  <div className="mt-4 flex-1 min-h-0 overflow-hidden">
-                    <TabsContent className="h-full" value="tasks">
+                  <div className="mt-4 flex-1 min-h-0 overflow-hidden flex flex-col">
+                    <TabsContent className="flex-1 min-h-0 h-full" value="tasks">
                       {orgId && (
                         <TaskBoard
                           agent={selectedAgentData}
@@ -263,27 +267,27 @@ function MissionControlPage() {
                       )}
                     </TabsContent>
 
-                    <TabsContent className="h-full" value="soul">
+                    <TabsContent className="flex-1 min-h-0 h-full" value="soul">
                       <SoulEditor
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
                       />
                     </TabsContent>
 
-                    <TabsContent className="h-full" value="sessions">
+                    <TabsContent className="flex-1 min-h-0 h-full" value="sessions">
                       <SessionViewer
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
                       />
                     </TabsContent>
 
-                    <TabsContent className="h-full" value="chat">
+                    <TabsContent className="flex-1 min-h-0 h-full" value="chat">
                       {orgId && (
                         <AgentChat agent={selectedAgentData} orgId={orgId} />
                       )}
                     </TabsContent>
 
-                    <TabsContent className="h-full" value="logs">
+                    <TabsContent className="flex-1 min-h-0 h-full" value="logs">
                       <LogViewer
                         instanceId={selectedAgent}
                         agentName={selectedAgentData.name}
