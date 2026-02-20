@@ -62,7 +62,7 @@ export function TaskCard({ task, agent, showAgent = false, onDragStart, onClick 
       <CardContent className="p-3 space-y-1.5">
         {/* Title row */}
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-[13px] leading-tight line-clamp-2">
+          <h4 className="font-semibold text-sm leading-tight line-clamp-2">
             {task.title}
           </h4>
           {task.handoffFrom && (

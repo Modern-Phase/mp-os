@@ -81,7 +81,7 @@ export function LeadCard({ lead, agents, onClick, onDragStart }: LeadCardProps) 
     >
       <CardContent className="p-3 space-y-1.5">
         {/* Company */}
-        <h4 className="font-semibold text-[13px] leading-tight line-clamp-1">{lead.company}</h4>
+        <h4 className="font-semibold text-sm leading-tight line-clamp-1">{lead.company}</h4>
 
         {/* Contact */}
         <p className="text-xs text-muted-foreground/70 line-clamp-1">

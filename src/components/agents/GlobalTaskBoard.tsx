@@ -151,8 +151,8 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">All Agent Tasks</h2>
-          <div className="flex items-center gap-3 mt-1 text-xs">
+          <h2 className="text-xl font-semibold">All Agent Tasks</h2>
+          <div className="flex items-center gap-3 mt-1 text-sm">
             <span className="text-muted-foreground tabular-nums">{totalCount} total</span>
             {inProgressCount > 0 && (
               <span className="text-amber-600 dark:text-amber-400 tabular-nums">{inProgressCount} in progress</span>
@@ -311,7 +311,7 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
                 <div className="px-3 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[status])} />
-                    <h3 className="font-medium text-sm text-foreground/90">
+                    <h3 className="font-semibold text-sm text-foreground/90">
                       {STATUS_LABELS[status]}
                     </h3>
                     <span className="text-xs text-muted-foreground/60 tabular-nums">

@@ -221,7 +221,7 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
                 <div className="px-3 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[status])} />
-                    <h3 className="font-medium text-sm text-foreground/90">
+                    <h3 className="font-semibold text-sm text-foreground/90">
                       {STATUS_LABELS[status]}
                     </h3>
                     <span className="text-xs text-muted-foreground/60 tabular-nums">

@@ -13,7 +13,8 @@ import { Id } from "~/convex/_generated/dataModel";
 import { Button } from "@/ui/button";
 import { ScrollArea } from "@/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
-import { LayoutGrid, Users, Plus, RefreshCw, Loader2 } from "lucide-react";
+import { LayoutGrid, Users, Plus, RefreshCw, Loader2, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { cn } from "@/utils/misc";
 import { InstanceCard } from "@/components/agents/InstanceCard";
 import { TaskBoard } from "@/components/agents/TaskBoard";
 import { GlobalTaskBoard } from "@/components/agents/GlobalTaskBoard";
@@ -75,6 +76,7 @@ function MissionControlPage() {
   const [activeTab, setActiveTab] = useState("tasks");
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   // Merge agent definitions with VPS live data
   const mergedAgents = useMemo(() => {
@@ -151,8 +153,8 @@ function MissionControlPage() {
             MP
           </div>
           <div>
-            <h1 className="font-bold text-lg">Mission Control</h1>
-            <p className="text-xs text-muted-foreground">
+            <h1 className="font-bold text-xl">Mission Control</h1>
+            <p className="text-sm text-muted-foreground">
               Multi-Agent Command Center
             </p>
           </div>
@@ -222,20 +224,20 @@ function MissionControlPage() {
           {selectedAgent && selectedAgentData ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Agent Header */}
-              <div className="px-6 pt-4 pb-2 flex items-center gap-3 border-b">
+              <div className="px-6 pt-4 pb-3 flex items-center gap-3 border-b">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{
-                    backgroundColor: `${selectedAgentData.color}20`,
+                    backgroundColor: `${selectedAgentData.color}15`,
                   }}
                 >
                   {selectedAgentData.emoji}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-sm">
+                  <h2 className="font-semibold text-base">
                     {selectedAgentData.name}
                   </h2>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {selectedAgentData.role}
                   </p>
                 </div>
@@ -249,11 +251,11 @@ function MissionControlPage() {
                   className="flex-1 min-h-0 flex flex-col"
                 >
                   <TabsList className="flex-shrink-0">
-                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                    <TabsTrigger value="soul">SOUL.md</TabsTrigger>
-                    <TabsTrigger value="sessions">Sessions</TabsTrigger>
-                    <TabsTrigger value="chat">Chat</TabsTrigger>
-                    <TabsTrigger value="logs">Logs</TabsTrigger>
+                    <TabsTrigger value="tasks" className="text-sm">Tasks</TabsTrigger>
+                    <TabsTrigger value="soul" className="text-sm">SOUL.md</TabsTrigger>
+                    <TabsTrigger value="sessions" className="text-sm">Sessions</TabsTrigger>
+                    <TabsTrigger value="chat" className="text-sm">Chat</TabsTrigger>
+                    <TabsTrigger value="logs" className="text-sm">Logs</TabsTrigger>
                   </TabsList>
 
                   <div className="mt-4 flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -319,15 +321,38 @@ function MissionControlPage() {
             </div>
           )}
 
-          {/* Right Panel - Global Context */}
+          {/* Right Panel - Global Context (collapsible) */}
           {orgId && (
-            <aside className="w-80 border-l bg-white dark:bg-gray-950 p-4">
-              <GlobalContextPanel
-                orgId={orgId}
-                projects={projects || []}
-                activity={recentActivity || []}
-              />
-            </aside>
+            <>
+              {/* Toggle button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-[calc(4rem+1rem)] z-10 h-8 w-8 p-0"
+                onClick={() => setRightPanelOpen(!rightPanelOpen)}
+              >
+                {rightPanelOpen ? (
+                  <PanelRightClose className="w-4 h-4" />
+                ) : (
+                  <PanelRightOpen className="w-4 h-4" />
+                )}
+              </Button>
+
+              <aside
+                className={cn(
+                  "border-l bg-white dark:bg-gray-950 p-4 transition-all duration-300 overflow-hidden",
+                  rightPanelOpen ? "w-80" : "w-0 p-0 border-l-0",
+                )}
+              >
+                {rightPanelOpen && (
+                  <GlobalContextPanel
+                    orgId={orgId}
+                    projects={projects || []}
+                    activity={recentActivity || []}
+                  />
+                )}
+              </aside>
+            </>
           )}
         </main>
       </div>
