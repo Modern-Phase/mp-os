@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as agentChat from "../agentChat.js";
 import type * as agentChatWebhook from "../agentChatWebhook.js";
+import type * as agentHealth from "../agentHealth.js";
 import type * as agentMemory from "../agentMemory.js";
 import type * as agentMemoryMigration from "../agentMemoryMigration.js";
 import type * as agents from "../agents.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   agentChat: typeof agentChat;
   agentChatWebhook: typeof agentChatWebhook;
+  agentHealth: typeof agentHealth;
   agentMemory: typeof agentMemory;
   agentMemoryMigration: typeof agentMemoryMigration;
   agents: typeof agents;

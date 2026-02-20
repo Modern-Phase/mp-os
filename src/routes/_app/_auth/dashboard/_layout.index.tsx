@@ -22,6 +22,7 @@ import { SoulEditor } from "@/components/agents/SoulEditor";
 import { SessionViewer } from "@/components/agents/SessionViewer";
 import { LogViewer } from "@/components/agents/LogViewer";
 import { AgentChat } from "@/components/agents/AgentChat";
+import { AgentHealthDashboard } from "@/components/agents/AgentHealthDashboard";
 import { GlobalContextPanel } from "@/components/agents/GlobalContextPanel";
 import { VpsConnectionStatus } from "@/components/agents/VpsConnectionStatus";
 import { InstanceCreateWizard } from "@/components/agents/InstanceCreateWizard";
@@ -208,6 +209,7 @@ function MissionControlPage() {
                     )
                   }
                   onRefresh={syncVps}
+                  orgId={orgId}
                 />
               ))}
               {allAgents.length === 0 && (
@@ -256,6 +258,7 @@ function MissionControlPage() {
                     <TabsTrigger value="sessions" className="text-sm">Sessions</TabsTrigger>
                     <TabsTrigger value="chat" className="text-sm">Chat</TabsTrigger>
                     <TabsTrigger value="logs" className="text-sm">Logs</TabsTrigger>
+                    <TabsTrigger value="health" className="text-sm">Health</TabsTrigger>
                   </TabsList>
 
                   <div className="mt-4 flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -296,6 +299,15 @@ function MissionControlPage() {
                         vpsUrl=""
                         apiKey=""
                       />
+                    </TabsContent>
+
+                    <TabsContent className="flex-1 min-h-0 h-full" value="health">
+                      {orgId && (
+                        <AgentHealthDashboard
+                          agent={selectedAgentData}
+                          orgId={orgId}
+                        />
+                      )}
                     </TabsContent>
                   </div>
                 </Tabs>

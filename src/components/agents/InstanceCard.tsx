@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { useAction } from "convex/react"
+import { useAction, useQuery as useConvexQuery } from "convex/react"
 import { api } from "~/convex/_generated/api"
+import { Id } from "~/convex/_generated/dataModel"
 import { Card, CardContent } from "@/ui/card"
 import { Badge } from "@/ui/badge"
 import { Button } from "@/ui/button"
@@ -35,6 +36,7 @@ interface InstanceCardProps {
   isSelected: boolean
   onClick: () => void
   onRefresh?: () => void
+  orgId?: Id<"organizations">
 }
 
 export function InstanceCard({
@@ -43,9 +45,15 @@ export function InstanceCard({
   isSelected,
   onClick,
   onRefresh,
+  orgId,
 }: InstanceCardProps) {
   const controlInstance = useAction(api.vpsOrchestrator.controlInstance)
   const [loading, setLoading] = useState<string | null>(null)
+
+  const healthScore = useConvexQuery(
+    api.agentHealth.getAgentHealthScore,
+    orgId ? { orgId, agentId: agent.agentId } : "skip",
+  )
 
   const status = vpsInstance?.systemdState || "unknown"
   const isRunning = status === "active"
@@ -126,6 +134,22 @@ export function InstanceCard({
             {vpsInstance.memoryUsage && (
               <Badge variant="outline" className="text-[10px]">
                 {Math.round(vpsInstance.memoryUsage / 1024 / 1024)}MB
+              </Badge>
+            )}
+            {healthScore && (
+              <Badge
+                className={cn(
+                  "text-[10px]",
+                  healthScore.label === "healthy"
+                    ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                    : healthScore.label === "degraded"
+                      ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+                      : healthScore.label === "critical"
+                        ? "bg-red-500/10 text-red-700 dark:text-red-400"
+                        : "bg-gray-500/10 text-gray-700 dark:text-gray-400",
+                )}
+              >
+                {healthScore.score}%
               </Badge>
             )}
           </div>

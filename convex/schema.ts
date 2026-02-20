@@ -721,7 +721,8 @@ const schema = defineSchema({
     .index("orgId_agentId", ["orgId", "agentId"])
     .index("sessionId", ["sessionId"])
     .index("runId", ["runId"])
-    .index("timestamp", ["timestamp"]),
+    .index("timestamp", ["timestamp"])
+    .index("agentId_timestamp", ["agentId", "timestamp"]),
 
   // Chat queue (for processing agent responses)
   agentChatQueue: defineTable({
