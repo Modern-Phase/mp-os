@@ -67,7 +67,7 @@ function CrmPage() {
   const seedTemplates = useMutation(api.projectTemplates.seedProjectTemplates)
   useEffect(() => {
     if (orgId) seedTemplates().catch(console.error)
-  }, [orgId])
+  }, [orgId, seedTemplates])
 
   const createLead = useMutation(api.crm.createLead)
   const seedCrmData = useMutation(api.crm.seedCrmData)

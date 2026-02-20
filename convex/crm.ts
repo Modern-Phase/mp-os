@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { pipelineStageValidator, leadSourceValidator, crmActivityTypeValidator, agentIdValidator } from "./schema";
+import { pipelineStageValidator, leadSourceValidator, crmActivityTypeValidator, agentIdValidator, AgentId } from "./schema";
 
 // ========== AUTH HELPER ==========
 
@@ -355,11 +355,11 @@ export const convertLeadToProject = mutation({
 
     // 2. Fetch template if provided
     let template: any = null;
-    let uniqueAgentIds: string[] = [];
+    let uniqueAgentIds: AgentId[] = [];
     if (args.templateId) {
       template = await ctx.db.get(args.templateId);
       if (template) {
-        const agentSet = new Set<string>();
+        const agentSet = new Set<AgentId>();
         for (const task of template.taskTemplates) {
           agentSet.add(task.agentId);
         }
@@ -376,7 +376,7 @@ export const convertLeadToProject = mutation({
       status: "planning",
       startDate: Date.now(),
       targetDate: args.targetDate,
-      agents: uniqueAgentIds as any,
+      agents: uniqueAgentIds,
       progress: 0,
       createdBy: userId,
     });
@@ -410,7 +410,7 @@ export const convertLeadToProject = mutation({
     for (const agentId of uniqueAgentIds) {
       await ctx.db.insert("agentChatMessages", {
         orgId: lead.orgId,
-        agentId: agentId as any,
+        agentId,
         userId,
         content: `📋 New project: **${args.projectName}** (${args.client}). You've been assigned tasks — check Mission Control.`,
         role: "system",
@@ -437,7 +437,7 @@ export const convertLeadToProject = mutation({
     for (const agentId of uniqueAgentIds) {
       await ctx.db.insert("agentActivity", {
         orgId: lead.orgId,
-        agentId: agentId as any,
+        agentId,
         action: "project_assigned",
         target: `${args.projectName} — ${args.client}`,
         projectId,

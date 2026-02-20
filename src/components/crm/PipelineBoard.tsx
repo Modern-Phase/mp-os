@@ -105,7 +105,8 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
     if (!leadId) return
 
     if (stage === 'won') {
-      const lead = leads?.find((l: any) => l._id === leadId)
+      if (!leads) return // still loading, don't act
+      const lead = leads.find((l: any) => l._id === leadId)
       if (lead && !lead.projectId) {
         setConvertLead(lead)
         setConvertModalOpen(true)
