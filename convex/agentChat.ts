@@ -6,6 +6,30 @@ import { internal } from "./_generated/api";
 import { agentIdValidator } from "./schema";
 import { VPS_ORCHESTRATOR_URL, VPS_API_KEY } from "./env";
 
+// Task directive instructions injected into every message to the agent
+const TASK_DIRECTIVE_INSTRUCTIONS = `<system_instructions>
+TASK MANAGEMENT: You are connected to a Mission Control dashboard. When you need to create, track, or manage tasks:
+- Include a <task_directives> block at the END of your text response
+- This is the ONLY way tasks appear in the Mission Control Kanban board
+- Do NOT write task files to disk — disk files are ephemeral and not visible to the team
+- The <task_directives> block will be automatically parsed and stripped from the displayed message
+
+Format: <task_directives>[{"action":"create","title":"Imperative title","description":"Details","priority":"medium","tags":["tag"]}]</task_directives>
+Priority: low | medium | high | urgent
+
+MEMORY MANAGEMENT: You can store important facts, preferences, and learnings for future reference.
+- Include a <memory_directives> block at the END of your response (after any task_directives)
+- Memories persist across sessions and are automatically recalled when relevant
+- Store things like: user preferences, team conventions, project decisions, learned facts
+- Only store genuinely useful long-term knowledge — not transient conversation details
+
+Format: <memory_directives>[{"action":"store","content":"The team uses Bun, not npm","category":"preference","importance":"medium"}]</memory_directives>
+Categories: fact | preference | procedure | context | relationship
+Importance: low | medium | high
+To forget: <memory_directives>[{"action":"forget","memoryId":"<id>"}]</memory_directives>
+</system_instructions>
+`;
+
 // Chat message schema
 export const createChatMessage = mutation({
   args: {
@@ -233,8 +257,9 @@ export const dispatchChatMessage = internalAction({
         status: "processing",
       });
 
-      // ── RAG Context Injection ──
-      let enrichedMessage = args.content;
+      // ── System Instructions + RAG Context Injection ──
+      // Prepend task directive instructions to every message
+      let enrichedMessage = TASK_DIRECTIVE_INSTRUCTIONS + args.content;
       if (args.userId) {
         try {
           const userId = args.userId as any; // Id<"users">
@@ -297,6 +322,31 @@ export const dispatchChatMessage = internalAction({
           // RAG failure should NOT block message delivery
           console.error("[agentChat] RAG injection failed (non-blocking):", ragError);
         }
+
+        // ── Agent Memory Injection ──
+        try {
+          const memories = await ctx.runAction(internal.agentMemory.searchMemory, {
+            agentId: args.agentId,
+            query: args.content,
+            limit: 8,
+          });
+
+          if (memories.length > 0) {
+            const memoryLines = memories.map(
+              (m: any) => `[${m.category}] ${m.content}`,
+            );
+            const memoryBlock = `<agent_memory>\n${memoryLines.join("\n")}\n</agent_memory>`;
+            // Prepend memory before existing enriched content
+            enrichedMessage = `${memoryBlock}\n\n${enrichedMessage}`;
+
+            console.log(
+              `[agentChat] Memory injected ${memories.length} items for agent ${args.agentId}`,
+            );
+          }
+        } catch (memoryError) {
+          // Memory failure should NOT block message delivery
+          console.error("[agentChat] Memory injection failed (non-blocking):", memoryError);
+        }
       }
 
       const sessionKey = args.sessionId || `agent:main:${args.agentId}`;
@@ -356,6 +406,162 @@ export const updateQueueStatus = internalMutation({
         ? { processedAt: Date.now() }
         : {}),
     });
+  },
+});
+
+// Internal: Scan agent workspace for task files and convert to Convex tasks
+// This is a fallback for when agents write .md files instead of using task_directives
+export const scanAgentWorkspaceForTasks = internalAction({
+  args: {
+    agentId: v.string(),
+    orgId: v.string(),
+    userId: v.string(),
+    messageId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!VPS_ORCHESTRATOR_URL || !VPS_API_KEY) return;
+
+    try {
+      // 1. Fetch task files from agent workspace
+      const response = await fetch(
+        `${VPS_ORCHESTRATOR_URL}/api/instances/${args.agentId}/workspace/tasks`,
+        {
+          headers: { "X-API-Key": VPS_API_KEY },
+        },
+      );
+
+      if (!response.ok) {
+        console.log(`[agentChat] Workspace scan returned ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.files || data.files.length === 0) return;
+
+      console.log(`[agentChat] Found ${data.files.length} task file(s) in ${args.agentId} workspace`);
+
+      // 2. Parse each file and create tasks
+      for (const file of data.files) {
+        try {
+          // Extract title from filename or first heading
+          const filename = file.path.split("/").pop()?.replace(/\.(md|txt)$/, "") || "Untitled";
+          const headingMatch = file.content.match(/^#\s+(.+)$/m);
+          const title = headingMatch ? headingMatch[1].trim() : filename.replace(/[-_]/g, " ");
+
+          // Extract description from content (first paragraph after heading, or full content)
+          const lines = file.content.split("\n").filter((l: string) => l.trim());
+          const descriptionLines = lines.filter(
+            (l: string) => !l.startsWith("#") && !l.startsWith("---"),
+          );
+          const description = descriptionLines.slice(0, 10).join("\n").trim() || file.content.slice(0, 500);
+
+          // Detect priority from content
+          let priority: "low" | "medium" | "high" | "urgent" = "medium";
+          const lowerContent = file.content.toLowerCase();
+          if (lowerContent.includes("urgent") || lowerContent.includes("critical")) priority = "urgent";
+          else if (lowerContent.includes("high priority") || lowerContent.includes("important")) priority = "high";
+          else if (lowerContent.includes("low priority")) priority = "low";
+
+          // Extract tags from content
+          const tags: string[] = [];
+          if (lowerContent.includes("lead") || lowerContent.includes("prospect")) tags.push("leads");
+          if (lowerContent.includes("outreach") || lowerContent.includes("email")) tags.push("outreach");
+          if (lowerContent.includes("research")) tags.push("research");
+          if (lowerContent.includes("meeting") || lowerContent.includes("standup")) tags.push("meeting");
+          if (tags.length === 0) tags.push("agent-created");
+
+          // Create the task in Convex
+          await ctx.runMutation(internal.agentChat.createTaskFromWorkspace, {
+            orgId: args.orgId as any,
+            userId: args.userId as any,
+            agentId: args.agentId as any,
+            title,
+            description,
+            priority,
+            tags,
+            sourceFile: file.path,
+            messageId: args.messageId,
+          });
+
+          // 3. Delete the processed file from the workspace
+          await fetch(
+            `${VPS_ORCHESTRATOR_URL}/api/instances/${args.agentId}/workspace/tasks`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": VPS_API_KEY,
+              },
+              body: JSON.stringify({ path: file.path }),
+            },
+          );
+
+          console.log(`[agentChat] Created task from workspace file: ${file.path} → "${title}"`);
+        } catch (fileError) {
+          console.error(`[agentChat] Failed to process workspace file ${file.path}:`, fileError);
+        }
+      }
+    } catch (error) {
+      console.error("[agentChat] Workspace scan failed:", error);
+    }
+  },
+});
+
+// Internal: Create a task from a workspace file scan
+export const createTaskFromWorkspace = internalMutation({
+  args: {
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    agentId: agentIdValidator,
+    title: v.string(),
+    description: v.string(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    tags: v.array(v.string()),
+    sourceFile: v.string(),
+    messageId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check for duplicate (same title + agent in last hour)
+    const recent = await ctx.db
+      .query("agentTasks")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.eq(q.field("orgId"), args.orgId))
+      .collect();
+
+    const isDuplicate = recent.some(
+      (t) =>
+        t.title === args.title &&
+        t._creationTime > Date.now() - 3600_000,
+    );
+    if (isDuplicate) {
+      console.log(`[agentChat] Skipping duplicate task: "${args.title}"`);
+      return;
+    }
+
+    const taskId = await ctx.db.insert("agentTasks", {
+      orgId: args.orgId,
+      title: args.title,
+      description: args.description,
+      agentId: args.agentId,
+      status: "todo",
+      priority: args.priority,
+      createdBy: args.userId,
+      assignedTo: args.userId,
+      createdByAgent: args.agentId,
+      tags: args.tags,
+    });
+
+    await ctx.db.insert("agentActivity", {
+      orgId: args.orgId,
+      agentId: args.agentId,
+      action: "task_created",
+      target: args.title,
+      taskId,
+      metadata: { source: "workspace_scan", file: args.sourceFile },
+      timestamp: Date.now(),
+    });
+
+    return taskId;
   },
 });
 

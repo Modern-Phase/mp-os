@@ -129,3 +129,129 @@ export async function ensureAgentDir(agentId: string): Promise<void> {
   const dir = getAgentDir(agentId);
   await mkdir(dir, { recursive: true });
 }
+
+/**
+ * Recursively scan an agent's workspace for files that look like tasks.
+ * Returns file paths + contents for any .md/.txt files that appear to be task-related.
+ */
+export async function scanWorkspaceForTasks(
+  agentId: string,
+): Promise<{ path: string; content: string; modified: string }[]> {
+  const agentDir = getAgentDir(agentId);
+  const results: { path: string; content: string; modified: string }[] = [];
+
+  async function walkDir(dir: string, relPrefix: string) {
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        const relPath = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory()) {
+          // Skip SOUL.md directory, sessions, .git, node_modules
+          if (["sessions", ".git", "node_modules", ".cache"].includes(entry.name)) continue;
+          await walkDir(fullPath, relPath);
+        } else if (
+          entry.isFile() &&
+          (entry.name.endsWith(".md") || entry.name.endsWith(".txt")) &&
+          entry.name !== "SOUL.md"
+        ) {
+          // Check if this looks task-related by path or name
+          const lowerPath = relPath.toLowerCase();
+          const isTaskLike =
+            lowerPath.includes("task") ||
+            lowerPath.includes("todo") ||
+            lowerPath.includes("action") ||
+            lowerPath.includes("tracker") ||
+            lowerPath.includes("lead") ||
+            lowerPath.includes("outreach") ||
+            lowerPath.includes("research") ||
+            lowerPath.includes("status") ||
+            lowerPath.includes("project");
+
+          if (isTaskLike) {
+            try {
+              const fileStat = await stat(fullPath);
+              const content = await readFile(fullPath, "utf-8");
+              // Only include files under 50KB
+              if (content.length < 50_000) {
+                results.push({
+                  path: relPath,
+                  content,
+                  modified: fileStat.mtime.toISOString(),
+                });
+              }
+            } catch {
+              // Skip unreadable files
+            }
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+  }
+
+  await walkDir(agentDir, "");
+  return results;
+}
+
+/**
+ * Scan an agent's memory directory for memory files.
+ * Returns file paths + contents for any files in ~/.openclaw/agents/<id>/memory/
+ */
+export async function scanWorkspaceForMemory(
+  agentId: string,
+): Promise<{ path: string; content: string; size: number; modified: string }[]> {
+  const agentDir = getAgentDir(agentId);
+  const memoryDir = join(agentDir, "memory");
+  const results: { path: string; content: string; size: number; modified: string }[] = [];
+
+  try {
+    const entries = await readdir(memoryDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const fullPath = join(memoryDir, entry.name);
+      try {
+        const fileStat = await stat(fullPath);
+        const content = await readFile(fullPath, "utf-8");
+        // Only include files under 100KB
+        if (content.length < 100_000) {
+          results.push({
+            path: `memory/${entry.name}`,
+            content,
+            size: fileStat.size,
+            modified: fileStat.mtime.toISOString(),
+          });
+        }
+      } catch {
+        // Skip unreadable files
+      }
+    }
+  } catch {
+    // Memory directory doesn't exist
+  }
+
+  return results;
+}
+
+/**
+ * Delete or archive a processed task file from an agent's workspace.
+ */
+export async function archiveTaskFile(
+  agentId: string,
+  relPath: string,
+): Promise<void> {
+  const agentDir = getAgentDir(agentId);
+  const fullPath = join(agentDir, relPath);
+
+  // Security: ensure resolved path stays inside agent dir
+  const { resolve } = await import("path");
+  const resolvedPath = resolve(fullPath);
+  if (!resolvedPath.startsWith(resolve(agentDir) + "/")) {
+    throw new Error("Path traversal detected");
+  }
+
+  const { unlink } = await import("fs/promises");
+  await unlink(resolvedPath);
+}

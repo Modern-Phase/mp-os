@@ -7,6 +7,7 @@ import instanceRoutes from "./routes/instances";
 import soulRoutes from "./routes/soul";
 import sessionRoutes from "./routes/sessions";
 import logRoutes from "./routes/logs";
+import workspaceRoutes from "./routes/workspace";
 import { CONFIG } from "./config";
 import { connect as connectGateway, disconnect as disconnectGateway } from "./services/gateway-ws";
 
@@ -48,6 +49,7 @@ app.route("/api", instanceRoutes);
 app.route("/api", soulRoutes);
 app.route("/api", sessionRoutes);
 app.route("/api", logRoutes);
+app.route("/api", workspaceRoutes);
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));

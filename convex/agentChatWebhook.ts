@@ -3,6 +3,7 @@
 
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 // ── Task Directive Parsing ──
@@ -40,6 +41,45 @@ function parseTaskDirectives(content: string): {
     } catch {
       // Malformed JSON — skip silently
       console.warn("[webhook] Failed to parse task_directives JSON");
+    }
+    cleanContent = cleanContent.replace(match[0], "");
+  }
+
+  return { directives, cleanContent: cleanContent.trim() };
+}
+
+// ── Memory Directive Parsing ──
+// Agents can include <memory_directives>[...]</memory_directives> in responses
+// to store or forget persistent memories.
+
+interface MemoryDirective {
+  action: "store" | "forget";
+  content?: string;
+  category?: string;
+  importance?: string;
+  memoryId?: string;
+}
+
+function parseMemoryDirectives(content: string): {
+  directives: MemoryDirective[];
+  cleanContent: string;
+} {
+  const regex = /<memory_directives>([\s\S]*?)<\/memory_directives>/g;
+  const directives: MemoryDirective[] = [];
+  let cleanContent = content;
+
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      for (const d of arr) {
+        if (d.action && typeof d.action === "string") {
+          directives.push(d as MemoryDirective);
+        }
+      }
+    } catch {
+      console.warn("[webhook] Failed to parse memory_directives JSON");
     }
     cleanContent = cleanContent.replace(match[0], "");
   }
@@ -93,9 +133,13 @@ export const receiveAgentResponse = internalMutation({
 
     if (args.state === "delta") {
       if (existing) {
-        // Append delta content to existing streaming message
+        // Guard: skip if message was already finalized (prevents race with final event)
+        if (existing.status === "delivered") {
+          return;
+        }
+        // Replace with latest cumulative snapshot (gateway sends full text so far)
         await ctx.db.patch(existing._id, {
-          content: existing.content + args.content,
+          content: args.content,
           timestamp: Date.now(),
         });
       } else {
@@ -119,8 +163,12 @@ export const receiveAgentResponse = internalMutation({
     } else if (args.state === "final") {
       // Parse task directives from agent response before storing
       const finalContent = args.content || existing?.content || "";
-      const { directives, cleanContent } = parseTaskDirectives(finalContent);
-      const displayContent = cleanContent || finalContent;
+      const { directives, cleanContent: taskCleanContent } = parseTaskDirectives(finalContent);
+
+      // Parse memory directives from the task-cleaned content
+      const { directives: memoryDirectives, cleanContent: memoryCleanContent } =
+        parseMemoryDirectives(taskCleanContent);
+      const displayContent = memoryCleanContent || taskCleanContent || finalContent;
 
       let agentMessageId: Id<"agentChatMessages"> | undefined;
 
@@ -231,6 +279,21 @@ export const receiveAgentResponse = internalMutation({
         }
       }
 
+      // ── Process Memory Directives ──
+      if (memoryDirectives.length > 0 && agentMessageId) {
+        const memOriginalMsg = await getOriginalMessage();
+        if (memOriginalMsg) {
+          // Schedule as action (needs embedding generation, can't run in mutation)
+          await ctx.scheduler.runAfter(0, internal.agentMemory.processMemoryDirectives, {
+            directives: memoryDirectives,
+            orgId: String(memOriginalMsg.orgId),
+            agentId: args.agentId,
+            sourceMessageId: String(agentMessageId),
+          });
+          console.log(`[webhook] Scheduled ${memoryDirectives.length} memory directive(s) for ${args.agentId}`);
+        }
+      }
+
       // Update the original user message status to "responded"
       const originalMsgForStatus = await getOriginalMessage();
       if (originalMsgForStatus && originalMsgForStatus.status === "pending") {
@@ -245,6 +308,18 @@ export const receiveAgentResponse = internalMutation({
         await ctx.db.patch(queueItem._id, {
           status: "completed",
           processedAt: Date.now(),
+        });
+      }
+
+      // Schedule workspace scan to catch task files the agent may have written
+      // Small delay to let the agent finish any file writes
+      const scanOriginalMsg = await getOriginalMessage();
+      if (scanOriginalMsg) {
+        await ctx.scheduler.runAfter(3000, internal.agentChat.scanAgentWorkspaceForTasks, {
+          agentId: args.agentId,
+          orgId: String(scanOriginalMsg.orgId),
+          userId: String(scanOriginalMsg.userId),
+          messageId: args.messageId,
         });
       }
     } else if (args.state === "error") {
