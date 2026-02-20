@@ -120,4 +120,26 @@ export const markdownComponents = {
     ) : (
       <code className="bg-muted px-1.5 py-0.5 rounded text-sm">{children}</code>
     ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="my-4 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children?: React.ReactNode }) => (
+    <thead className="bg-muted/60">{children}</thead>
+  ),
+  tbody: ({ children }: { children?: React.ReactNode }) => (
+    <tbody className="divide-y divide-border">{children}</tbody>
+  ),
+  tr: ({ children }: { children?: React.ReactNode }) => (
+    <tr className="border-b border-border last:border-b-0">{children}</tr>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="px-3 py-2 text-left text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="px-3 py-2 text-sm text-foreground">{children}</td>
+  ),
 };

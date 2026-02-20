@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/utils/misc";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   markdownComponents,
   fixOrderedListNumbering,
@@ -231,7 +232,7 @@ export const ChatMessage = memo(
         ))}
 
         {textContent && (
-          <ReactMarkdown components={markdownComponents}>
+          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
             {fixOrderedListNumbering(textContent)}
           </ReactMarkdown>
         )}
