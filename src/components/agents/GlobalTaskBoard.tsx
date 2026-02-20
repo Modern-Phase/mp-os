@@ -299,7 +299,7 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
               <div
                 key={status}
                 className={cn(
-                  'flex flex-col rounded-xl border transition-colors duration-200 group/col',
+                  'flex flex-col rounded-xl border transition-colors duration-200 group/col overflow-hidden',
                   'bg-muted/30 dark:bg-muted/20 border-border/50',
                   dragOverColumn === status && 'border-primary/40 bg-primary/5',
                 )}

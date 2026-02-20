@@ -239,7 +239,7 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
               <div
                 key={stage}
                 className={cn(
-                  'flex-shrink-0 flex flex-col rounded-xl border transition-colors duration-200 group/col',
+                  'flex-shrink-0 flex flex-col rounded-xl border transition-colors duration-200 group/col overflow-hidden',
                   'bg-muted/30 dark:bg-muted/20 border-border/50',
                   collapsed ? 'w-[60px]' : 'w-[240px]',
                   dragOverColumn === stage && 'border-primary/40 bg-primary/5',
