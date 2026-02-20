@@ -33,11 +33,11 @@ function AgentChatPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex">
       {/* Sidebar - Agent List */}
-      <aside className="w-72 border-r bg-gray-50 dark:bg-gray-900 p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
+      <aside className="w-72 border-r bg-gray-50 dark:bg-gray-900 p-4 flex flex-col overflow-hidden">
+        <h2 className="font-semibold mb-4 flex items-center gap-2 shrink-0">
           <span>💬</span> Chat with Agents
         </h2>
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto flex-1 min-h-0">
           {agents.map((agent: any) => (
             <AgentCard
               key={agent.agentId}
