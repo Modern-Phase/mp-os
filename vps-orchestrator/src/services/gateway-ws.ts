@@ -109,7 +109,7 @@ let handshakeRequestId = "";
 const MAX_RECONNECT_DELAY = 30_000;
 const REQUEST_TIMEOUT = 30_000;
 const KEEPALIVE_INTERVAL = 15_000;
-const DELTA_FLUSH_MS = 200;
+const DELTA_FLUSH_MS = 80;
 
 // Maps request IDs to pending acks
 const pendingRequests = new Map<string, PendingRequest>();
@@ -334,7 +334,7 @@ function handleResponse(frame: { id: string | number; result?: any; payload?: an
   pending.resolve(runId);
 }
 
-function handleEvent(frame: { event: string; data?: any; payload?: any }): void {
+async function handleEvent(frame: { event: string; data?: any; payload?: any }): Promise<void> {
   if (frame.event !== "chat") return;
 
   // Gateway uses "payload" (not "data") for event payloads
@@ -360,12 +360,12 @@ function handleEvent(frame: { event: string; data?: any; payload?: any }): void 
 
     case "final":
       console.log(`[gateway-ws] Chat final runId=${runId}: "${textContent.slice(0, 80)}"`);
-      // Flush any remaining delta buffer first
-      flushDelta(runId);
+      // Await delta flush so the last delta webhook completes before final arrives
+      await flushDelta(runId);
       // Clean up the run
       runCallbacks.delete(runId);
-      // Send final webhook
-      sendWebhook({
+      // Send final webhook (sequential — guarantees Convex sees deltas before final)
+      await sendWebhook({
         agentId: callbackInfo.agentId,
         orgId: callbackInfo.orgId,
         messageId: callbackInfo.messageId,
@@ -378,7 +378,7 @@ function handleEvent(frame: { event: string; data?: any; payload?: any }): void 
       break;
 
     case "aborted":
-      flushDelta(runId);
+      await flushDelta(runId);
       runCallbacks.delete(runId);
       sendWebhook({
         agentId: callbackInfo.agentId,
@@ -393,8 +393,7 @@ function handleEvent(frame: { event: string; data?: any; payload?: any }): void 
       break;
 
     case "error":
-      // Flush any remaining delta buffer
-      flushDelta(runId);
+      await flushDelta(runId);
       runCallbacks.delete(runId);
       sendWebhook({
         agentId: callbackInfo.agentId,
@@ -433,7 +432,8 @@ function extractTextContent(message: any): string {
 function bufferDelta(runId: string, content: string, callbackInfo: CallbackInfo): void {
   const existing = deltaBuffers.get(runId);
   if (existing) {
-    existing.content += content;
+    // Gateway sends cumulative content (full text so far) — replace, don't append
+    existing.content = content;
     return; // Timer already running
   }
 
@@ -443,29 +443,36 @@ function bufferDelta(runId: string, content: string, callbackInfo: CallbackInfo)
     timer: null,
   };
 
-  buffer.timer = setTimeout(() => flushDelta(runId), DELTA_FLUSH_MS);
+  buffer.timer = setTimeout(() => {
+    flushDelta(runId).catch((err) =>
+      console.error(`[gateway-ws] Failed to flush delta for runId=${runId}:`, err),
+    );
+  }, DELTA_FLUSH_MS);
   deltaBuffers.set(runId, buffer);
 }
 
-function flushDelta(runId: string): void {
+/**
+ * Flush buffered delta content to Convex via webhook.
+ * Returns a Promise so callers (e.g. final handler) can await delivery
+ * before sending subsequent events — prevents race conditions.
+ */
+function flushDelta(runId: string): Promise<void> {
   const buffer = deltaBuffers.get(runId);
-  if (!buffer) return;
+  if (!buffer) return Promise.resolve();
 
   if (buffer.timer) clearTimeout(buffer.timer);
   deltaBuffers.delete(runId);
 
-  if (!buffer.content) return;
+  if (!buffer.content) return Promise.resolve();
 
-  sendWebhook({
+  return sendWebhook({
     agentId: buffer.callbackInfo.agentId,
     orgId: buffer.callbackInfo.orgId,
     messageId: buffer.callbackInfo.messageId,
     content: buffer.content,
     state: "delta",
     runId,
-  }).catch((err) =>
-    console.error(`[gateway-ws] Failed to send delta webhook for runId=${runId}:`, err),
-  );
+  });
 }
 
 function cleanup(): void {
@@ -483,9 +490,11 @@ function cleanup(): void {
   }
   pendingRequests.clear();
 
-  // Flush all delta buffers
+  // Flush all delta buffers (best-effort on disconnect)
   for (const runId of deltaBuffers.keys()) {
-    flushDelta(runId);
+    flushDelta(runId).catch((err) =>
+      console.error(`[gateway-ws] Failed to flush delta on cleanup for runId=${runId}:`, err),
+    );
   }
 }
 
