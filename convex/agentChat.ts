@@ -45,7 +45,7 @@ export const createChatMessage = mutation({
         queuedAt: Date.now(),
       });
 
-      // Schedule immediate dispatch to VPS Orchestrator
+      // Schedule immediate dispatch to VPS Orchestrator (includes RAG injection)
       await ctx.scheduler.runAfter(0, internal.agentChat.dispatchChatMessage, {
         queueId,
         messageId: messageId as string,
@@ -53,6 +53,7 @@ export const createChatMessage = mutation({
         orgId: args.orgId as string,
         content: args.content,
         sessionId: args.sessionId,
+        userId: userId as string,
       });
     }
 
@@ -185,7 +186,30 @@ export const getOrCreateSession = mutation({
   },
 });
 
+// Internal: Patch RAG citation data onto a user message
+export const patchMessageRagData = internalMutation({
+  args: {
+    messageId: v.id("agentChatMessages"),
+    retrievedChunks: v.array(v.string()),
+    citationMeta: v.array(
+      v.object({
+        documentName: v.string(),
+        content: v.string(),
+        pageNumber: v.optional(v.number()),
+        parser: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.messageId, {
+      retrievedChunks: args.retrievedChunks,
+      citationMeta: args.citationMeta,
+    });
+  },
+});
+
 // Internal: Dispatch a chat message to the VPS Orchestrator → Gateway WS bridge
+// Now includes RAG context injection before sending to agent
 export const dispatchChatMessage = internalAction({
   args: {
     queueId: v.id("agentChatQueue"),
@@ -194,6 +218,7 @@ export const dispatchChatMessage = internalAction({
     orgId: v.string(),
     content: v.string(),
     sessionId: v.optional(v.string()),
+    userId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (!VPS_ORCHESTRATOR_URL || !VPS_API_KEY) {
@@ -208,6 +233,72 @@ export const dispatchChatMessage = internalAction({
         status: "processing",
       });
 
+      // ── RAG Context Injection ──
+      let enrichedMessage = args.content;
+      if (args.userId) {
+        try {
+          const userId = args.userId as any; // Id<"users">
+          const orgId = args.orgId as any; // Id<"organizations">
+
+          // 1. Get agent config for collection filtering
+          const agentConfig = await ctx.runQuery(internal.agents.getAgentConfig, {
+            agentId: args.agentId as any,
+          });
+
+          // 2. Determine which collections to search
+          let collectionIds: any[] = [];
+          if (agentConfig?.collectionIds && agentConfig.collectionIds.length > 0) {
+            collectionIds = agentConfig.collectionIds;
+          } else {
+            // Fall back to all org collections
+            const orgCollections = await ctx.runQuery(
+              internal.collections.getCollectionsByOrgId,
+              { orgId },
+            );
+            collectionIds = orgCollections.map((c: any) => c._id);
+          }
+
+          // 3. Run RAG search if we have collections
+          if (collectionIds.length > 0) {
+            const ragResults = await ctx.runAction(internal.rag.internalSearchCatalog, {
+              userId,
+              collectionIds,
+              query: args.content,
+              limit: 6,
+            });
+
+            if (ragResults.length > 0) {
+              // 4. Build context block
+              const contextChunks = ragResults.map(
+                (r: any) =>
+                  `[${r.documentName}${r.pageNumber ? ` p.${r.pageNumber}` : ""}]\n${r.content}`,
+              );
+              const contextBlock = `<document_context>\n${contextChunks.join("\n---\n")}\n</document_context>`;
+              enrichedMessage = `${contextBlock}\n\n${args.content}`;
+
+              // 5. Store citation metadata on the user message
+              await ctx.runMutation(internal.agentChat.patchMessageRagData, {
+                messageId: args.messageId as any,
+                retrievedChunks: ragResults.map((r: any) => String(r._id)),
+                citationMeta: ragResults.map((r: any) => ({
+                  documentName: r.documentName || "Unknown",
+                  content: r.snippet || r.content?.slice(0, 200) || "",
+                  pageNumber: r.pageNumber,
+                  parser: r.parser,
+                })),
+              });
+
+              console.log(
+                `[agentChat] RAG injected ${ragResults.length} chunks for agent ${args.agentId}`,
+              );
+            }
+          }
+        } catch (ragError) {
+          // RAG failure should NOT block message delivery
+          console.error("[agentChat] RAG injection failed (non-blocking):", ragError);
+        }
+      }
+
       const sessionKey = args.sessionId || `agent:main:${args.agentId}`;
 
       const response = await fetch(
@@ -219,7 +310,7 @@ export const dispatchChatMessage = internalAction({
             "X-API-Key": VPS_API_KEY,
           },
           body: JSON.stringify({
-            message: args.content,
+            message: enrichedMessage,
             sessionId: sessionKey,
             messageId: args.messageId,
             orgId: args.orgId,

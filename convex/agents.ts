@@ -1,7 +1,7 @@
 // convex/agents.ts — Agent system queries and mutations
 
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { agentIdValidator, taskStatusValidator, priorityValidator, AGENT_IDS } from "./schema";
 
 // ========== AGENT DEFINITIONS ==========
@@ -116,6 +116,19 @@ const AGENT_DEFINITIONS = {
     soulPath: "agents/dana/SOUL.md",
   },
 };
+
+// ========== INTERNAL QUERIES ==========
+
+// Used by dispatchChatMessage to read per-agent RAG collection config
+export const getAgentConfig = internalQuery({
+  args: { agentId: agentIdValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agents")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .first();
+  },
+});
 
 // ========== QUERIES ==========
 

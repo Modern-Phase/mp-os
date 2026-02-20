@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
@@ -14,6 +14,19 @@ async function getAuthUserId(
     .unique();
   return user?._id ?? null;
 }
+
+// Internal query: get all collections for an organization (used by agent RAG injection)
+export const getCollectionsByOrgId = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("documentCollections")
+      .withIndex("orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+  },
+});
 
 // Internal mutation for creating default collection (called from app.ts when user is created)
 export const createDefaultCollection = internalMutation({

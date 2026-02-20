@@ -83,7 +83,7 @@ interface LeadDetailDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function LeadDetailDialog({ lead, agents, orgId, open, onOpenChange }: LeadDetailDialogProps) {
+export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChange }: LeadDetailDialogProps) {
   const updateLead = useMutation(api.crm.updateLead)
   const updateLeadStage = useMutation(api.crm.updateLeadStage)
   const deleteLeadMut = useMutation(api.crm.deleteLead)

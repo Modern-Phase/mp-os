@@ -1,7 +1,7 @@
 // src/components/chat/ChatMessage.tsx
 // Shared message component used by both ChatInterface (RAG) and AgentChat
 
-import React, { memo, useState } from "react";
+import { memo, useState } from "react";
 import { Avatar, AvatarFallback } from "@/ui/avatar";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";

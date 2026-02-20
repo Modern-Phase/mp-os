@@ -53,7 +53,6 @@ import { useConvexAuthToken } from "@/utils/auth";
 import {
   ChatMessage,
   type Citation,
-  type ChatMessageData,
 } from "@/components/chat/ChatMessage";
 
 // Chat session type

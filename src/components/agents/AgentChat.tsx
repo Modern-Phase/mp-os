@@ -9,8 +9,10 @@ import { Id } from "~/convex/_generated/dataModel";
 import { Button } from "@/ui/button";
 import { Avatar, AvatarFallback } from "@/ui/avatar";
 import { Textarea } from "@/ui/textarea";
-import { Send, Loader2, AlertCircle, RotateCcw, ChevronDown } from "lucide-react";
+import { Badge } from "@/ui/badge";
+import { Send, Loader2, RotateCcw, ChevronDown, ListChecks } from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
+import type { Citation } from "@/components/chat/ChatMessage";
 
 interface AgentChatProps {
   agent: any;
@@ -203,6 +205,21 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                 msg.status === "pending" &&
                 Date.now() - msg.timestamp > 120_000;
 
+              // Build citations for agent messages from the user message they replied to
+              let citations: Citation[] | undefined;
+              if (msg.role === "agent" && msg.replyTo) {
+                const userMsg = messages?.find((m: any) => m._id === msg.replyTo);
+                if (userMsg?.citationMeta && userMsg.citationMeta.length > 0) {
+                  citations = userMsg.citationMeta.map((c: any, idx: number) => ({
+                    chunkId: userMsg.retrievedChunks?.[idx] || `chunk-${idx}`,
+                    documentName: c.documentName,
+                    content: c.content,
+                    pageNumber: c.pageNumber,
+                    parser: c.parser,
+                  }));
+                }
+              }
+
               return (
                 <div key={msg._id}>
                   <ChatMessage
@@ -212,7 +229,17 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                       content: msg.content,
                     }}
                     isStreaming={isStreaming && msg.role !== "user"}
+                    citations={citations}
                   />
+                  {/* Task creation badge */}
+                  {msg.processedTaskDirectives > 0 && (
+                    <div className="mt-2">
+                      <Badge variant="secondary" className="gap-1.5 text-xs">
+                        <ListChecks className="h-3 w-3" />
+                        {msg.processedTaskDirectives} task{msg.processedTaskDirectives > 1 ? "s" : ""} created
+                      </Badge>
+                    </div>
+                  )}
                   {isFailed && (
                     <div className="flex justify-end mt-1">
                       <button

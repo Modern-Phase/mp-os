@@ -45,7 +45,7 @@ interface TaskDetailDialogProps {
 export function TaskDetailDialog({
   task,
   agents,
-  orgId,
+  orgId: _orgId,
   open,
   onOpenChange,
 }: TaskDetailDialogProps) {

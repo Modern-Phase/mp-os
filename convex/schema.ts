@@ -566,6 +566,7 @@ const schema = defineSchema({
     expertise: v.array(v.string()),
     isActive: v.boolean(),
     soulPath: v.string(), // Path to SOUL.md
+    collectionIds: v.optional(v.array(v.id("documentCollections"))), // RAG access (empty = all org collections)
   })
     .index("agentId", ["agentId"])
     .index("department", ["department"]),
@@ -584,6 +585,8 @@ const schema = defineSchema({
     handoffNote: v.optional(v.string()),
     createdBy: v.id("users"),
     assignedTo: v.id("users"), // Can be agent or human
+    createdByAgent: v.optional(agentIdValidator), // If created by an agent
+    sourceMessageId: v.optional(v.id("agentChatMessages")), // Originating chat message
     dueDate: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     tags: v.array(v.string()),
@@ -698,6 +701,19 @@ const schema = defineSchema({
     replyTo: v.optional(v.id("agentChatMessages")),
     metadata: v.optional(v.any()),
     timestamp: v.number(),
+    // RAG citation data (stored on user messages that triggered RAG search)
+    retrievedChunks: v.optional(v.array(v.string())),
+    citationMeta: v.optional(
+      v.array(
+        v.object({
+          documentName: v.string(),
+          content: v.string(),
+          pageNumber: v.optional(v.number()),
+          parser: v.optional(v.string()),
+        }),
+      ),
+    ),
+    processedTaskDirectives: v.optional(v.number()), // Count of tasks created from this message
   })
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])

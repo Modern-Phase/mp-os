@@ -220,6 +220,74 @@ export const searchCatalog = action({
   },
 });
 
+// Internal variant of searchCatalog — takes userId directly (no auth context)
+// Used by dispatchChatMessage to inject RAG context into agent messages
+export const internalSearchCatalog = internalAction({
+  args: {
+    userId: v.id("users"),
+    collectionIds: v.array(v.id("documentCollections")),
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<CatalogSearchResult[]> => {
+    const limit = args.limit || 6;
+
+    const queryEmbedding = await generateEmbedding(args.query);
+
+    const vectorResults = await ctx.vectorSearch(
+      "documentChunks",
+      "embedding_index",
+      {
+        vector: queryEmbedding,
+        limit: limit * 2,
+        filter: (q) => q.eq("userId", args.userId),
+      },
+    );
+
+    const results: CatalogSearchResult[] = [];
+    const seenParentIds = new Set<string>();
+
+    for (const res of vectorResults) {
+      const chunk = await ctx.runQuery(api.rag.getChunkById, {
+        chunkId: res._id,
+      });
+      if (!chunk || !args.collectionIds.includes(chunk.collectionId)) continue;
+
+      let content = chunk.content;
+      if (chunk.parentId) {
+        if (seenParentIds.has(chunk.parentId)) continue;
+        const parent = await ctx.runQuery(internal.rag.getParentById, {
+          parentId: chunk.parentId,
+        });
+        if (parent) {
+          content = parent.content;
+          seenParentIds.add(chunk.parentId);
+        }
+      }
+
+      const doc = await ctx.runQuery(api.rag.getDocumentByIdQuery, {
+        documentId: chunk.documentId,
+      });
+
+      results.push({
+        _id: res._id,
+        _score: res._score,
+        type: "chunk",
+        documentId: chunk.documentId,
+        documentName: doc?.name || "Unknown",
+        content,
+        snippet: chunk.content,
+        pageNumber: chunk.metadata?.pageNumber,
+        parser: (doc?.metadata as any)?.parser || "unstructured",
+      });
+
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  },
+});
+
 // Legacy support for part number search
 export const searchChunksForPartNumberInternal = internalAction({
   args: {
