@@ -422,6 +422,54 @@ export const deleteTask = mutation({
   },
 });
 
+export const getProjectTasks = query({
+  args: { projectId: v.id("agentProjects") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentTasks")
+      .withIndex("projectId", (q) => q.eq("projectId", args.projectId))
+      .collect();
+  },
+});
+
+export const updateProject = mutation({
+  args: {
+    projectId: v.id("agentProjects"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("planning"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("delivered"),
+    )),
+    progress: v.optional(v.number()),
+    targetDate: v.optional(v.number()),
+    agents: v.optional(v.array(agentIdValidator)),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const { projectId, ...updates } = args;
+    const patch: Record<string, any> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (val !== undefined) patch[key] = val;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.projectId, patch);
+    }
+
+    return true;
+  },
+});
+
 export const createProject = mutation({
   args: {
     orgId: v.id("organizations"),

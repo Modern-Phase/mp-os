@@ -19,6 +19,7 @@ import { Filter, Plus, LayoutGrid, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/misc'
 import { LeadCard } from '@/components/crm/LeadCard'
 import { LeadDetailDialog } from '@/components/crm/LeadDetailDialog'
+import { ConvertToProjectModal } from '@/components/crm/ConvertToProjectModal'
 import { STATUS_DOT_COLORS, STATUS_ACCENT_COLORS } from '@/components/kanban/kanban-utils'
 
 const STAGES: PipelineStage[] = [
@@ -52,6 +53,10 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
   const createLead = useMutation(api.crm.createLead)
 
   const [selectedLead, setSelectedLead] = useState<any | null>(null)
+
+  // Convert to project
+  const [convertLead, setConvertLead] = useState<any | null>(null)
+  const [convertModalOpen, setConvertModalOpen] = useState(false)
 
   // Inline quick-add
   const [quickAddStage, setQuickAddStage] = useState<PipelineStage | null>(null)
@@ -97,9 +102,18 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
     e.preventDefault()
     setDragOverColumn(null)
     const leadId = e.dataTransfer.getData('leadId') as Id<'crmLeads'>
-    if (leadId) {
-      await updateLeadStage({ leadId, stage })
+    if (!leadId) return
+
+    if (stage === 'won') {
+      const lead = leads?.find((l: any) => l._id === leadId)
+      if (lead && !lead.projectId) {
+        setConvertLead(lead)
+        setConvertModalOpen(true)
+        return
+      }
     }
+
+    await updateLeadStage({ leadId, stage })
   }
 
   const handleQuickAdd = async (stage: PipelineStage) => {
@@ -379,6 +393,17 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
         orgId={orgId}
         open={!!selectedLead}
         onOpenChange={(open) => { if (!open) setSelectedLead(null) }}
+      />
+
+      {/* Convert to project modal (from drag-to-Won) */}
+      <ConvertToProjectModal
+        lead={convertLead}
+        orgId={orgId}
+        open={convertModalOpen}
+        onOpenChange={(open) => {
+          setConvertModalOpen(open)
+          if (!open) setConvertLead(null)
+        }}
       />
     </div>
   )

@@ -332,6 +332,123 @@ export const addActivity = mutation({
   },
 });
 
+// ========== DEAL-TO-DELIVERY CONVERSION ==========
+
+export const convertLeadToProject = mutation({
+  args: {
+    leadId: v.id("crmLeads"),
+    projectName: v.string(),
+    client: v.string(),
+    description: v.string(),
+    targetDate: v.number(),
+    templateId: v.optional(v.id("projectTemplates")),
+  },
+  returns: v.id("agentProjects"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    // 1. Fetch lead
+    const lead = await ctx.db.get(args.leadId);
+    if (!lead) throw new Error("Lead not found");
+    if (lead.projectId) throw new Error("Lead already has a linked project");
+
+    // 2. Fetch template if provided
+    let template: any = null;
+    let uniqueAgentIds: string[] = [];
+    if (args.templateId) {
+      template = await ctx.db.get(args.templateId);
+      if (template) {
+        const agentSet = new Set<string>();
+        for (const task of template.taskTemplates) {
+          agentSet.add(task.agentId);
+        }
+        uniqueAgentIds = Array.from(agentSet);
+      }
+    }
+
+    // 3. Create project
+    const projectId = await ctx.db.insert("agentProjects", {
+      orgId: lead.orgId,
+      name: args.projectName,
+      client: args.client,
+      description: args.description,
+      status: "planning",
+      startDate: Date.now(),
+      targetDate: args.targetDate,
+      agents: uniqueAgentIds as any,
+      progress: 0,
+      createdBy: userId,
+    });
+
+    // 4. Patch lead → won with projectId
+    await ctx.db.patch(args.leadId, {
+      stage: "won",
+      closedAt: Date.now(),
+      projectId,
+    });
+
+    // 5. Create tasks from template
+    if (template) {
+      for (const task of template.taskTemplates) {
+        await ctx.db.insert("agentTasks", {
+          orgId: lead.orgId,
+          title: task.title,
+          description: task.description,
+          agentId: task.agentId,
+          status: "todo",
+          priority: task.priority,
+          tags: task.tags,
+          projectId,
+          createdBy: userId,
+          assignedTo: userId,
+        });
+      }
+    }
+
+    // 6. Post system chat notification per unique agent
+    for (const agentId of uniqueAgentIds) {
+      await ctx.db.insert("agentChatMessages", {
+        orgId: lead.orgId,
+        agentId: agentId as any,
+        userId,
+        content: `📋 New project: **${args.projectName}** (${args.client}). You've been assigned tasks — check Mission Control.`,
+        role: "system",
+        status: "delivered",
+        timestamp: Date.now(),
+      });
+    }
+
+    // 7. Log CRM activity
+    await ctx.db.insert("crmActivities", {
+      orgId: lead.orgId,
+      leadId: args.leadId,
+      type: "note",
+      title: `Converted to project: ${args.projectName}`,
+      description: template
+        ? `Created project with ${template.taskTemplates.length} tasks from "${template.name}" template`
+        : "Created blank project",
+      userId,
+      agentId: lead.assignedAgent,
+      timestamp: Date.now(),
+    });
+
+    // 8. Log agent activity per involved agent
+    for (const agentId of uniqueAgentIds) {
+      await ctx.db.insert("agentActivity", {
+        orgId: lead.orgId,
+        agentId: agentId as any,
+        action: "project_assigned",
+        target: `${args.projectName} — ${args.client}`,
+        projectId,
+        timestamp: Date.now(),
+      });
+    }
+
+    return projectId;
+  },
+});
+
 // ========== SEED MOCK DATA ==========
 
 const MOCK_LEADS = [

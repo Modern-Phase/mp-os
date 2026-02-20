@@ -11,6 +11,8 @@
 import type * as admin from "../admin.js";
 import type * as agentChat from "../agentChat.js";
 import type * as agentChatWebhook from "../agentChatWebhook.js";
+import type * as agentMemory from "../agentMemory.js";
+import type * as agentMemoryMigration from "../agentMemoryMigration.js";
 import type * as agents from "../agents.js";
 import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
@@ -32,6 +34,7 @@ import type * as largeUploadMutations from "../largeUploadMutations.js";
 import type * as llamaParse from "../llamaParse.js";
 import type * as organizations from "../organizations.js";
 import type * as processingJobs from "../processingJobs.js";
+import type * as projectTemplates from "../projectTemplates.js";
 import type * as promptSecurity from "../promptSecurity.js";
 import type * as rag from "../rag.js";
 import type * as ragLarge from "../ragLarge.js";
@@ -54,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   agentChat: typeof agentChat;
   agentChatWebhook: typeof agentChatWebhook;
+  agentMemory: typeof agentMemory;
+  agentMemoryMigration: typeof agentMemoryMigration;
   agents: typeof agents;
   app: typeof app;
   auditLog: typeof auditLog;
@@ -75,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   llamaParse: typeof llamaParse;
   organizations: typeof organizations;
   processingJobs: typeof processingJobs;
+  projectTemplates: typeof projectTemplates;
   promptSecurity: typeof promptSecurity;
   rag: typeof rag;
   ragLarge: typeof ragLarge;

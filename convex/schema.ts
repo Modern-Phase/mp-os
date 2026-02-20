@@ -714,6 +714,7 @@ const schema = defineSchema({
       ),
     ),
     processedTaskDirectives: v.optional(v.number()), // Count of tasks created from this message
+    processedMemoryDirectives: v.optional(v.number()), // Count of memories stored from this message
   })
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])
@@ -776,6 +777,66 @@ const schema = defineSchema({
     .index("orgId_status", ["orgId", "status"])
     .index("agentId", ["agentId"])
     .index("sessionId", ["sessionId"]),
+
+  // Agent memory (persisted knowledge for cross-session recall)
+  agentMemory: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    content: v.string(),
+    category: v.union(
+      v.literal("fact"),
+      v.literal("preference"),
+      v.literal("procedure"),
+      v.literal("context"),
+      v.literal("relationship"),
+    ),
+    importance: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    source: v.union(v.literal("conversation"), v.literal("migration"), v.literal("manual")),
+    sourceMessageId: v.optional(v.id("agentChatMessages")),
+    embedding: v.array(v.float64()),
+    isActive: v.boolean(),
+    migratedFrom: v.optional(v.string()),
+  })
+    .index("agentId", ["agentId"])
+    .index("agentId_category", ["agentId", "category"])
+    .index("orgId", ["orgId"])
+    .vectorIndex("memory_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["agentId", "isActive"],
+    }),
+
+  // Agent memory audit log
+  agentMemoryLog: defineTable({
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    action: v.union(v.literal("store"), v.literal("deactivate"), v.literal("migrate")),
+    memoryId: v.id("agentMemory"),
+    content: v.string(),
+    timestamp: v.number(),
+  })
+    .index("agentId", ["agentId"])
+    .index("orgId_timestamp", ["orgId", "timestamp"]),
+
+  // Project templates (for deal-to-delivery pipeline)
+  projectTemplates: defineTable({
+    orgId: v.optional(v.id("organizations")),
+    name: v.string(),
+    description: v.string(),
+    icon: v.optional(v.string()),
+    taskTemplates: v.array(v.object({
+      title: v.string(),
+      description: v.string(),
+      agentId: agentIdValidator,
+      priority: priorityValidator,
+      tags: v.array(v.string()),
+      order: v.number(),
+    })),
+    isGlobal: v.boolean(),
+    createdBy: v.optional(v.id("users")),
+  })
+    .index("isGlobal", ["isGlobal"])
+    .index("orgId", ["orgId"]),
 
   // CRM - Leads/Deals pipeline
   crmLeads: defineTable({

@@ -35,8 +35,10 @@ import {
   Send,
   PenLine,
   X,
+  Check,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
+import { ConvertToProjectModal } from '@/components/crm/ConvertToProjectModal'
 
 const STAGE_OPTIONS: { value: PipelineStage; label: string }[] = [
   { value: 'new_lead', label: 'New Lead' },
@@ -113,6 +115,9 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
   const [newTag, setNewTag] = useState('')
   const [lostReason, setLostReason] = useState('')
 
+  // Convert to project modal
+  const [convertModalOpen, setConvertModalOpen] = useState(false)
+
   // Activity form
   const [activityType, setActivityType] = useState<CrmActivityType>('note')
   const [activityTitle, setActivityTitle] = useState('')
@@ -154,6 +159,10 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
   if (!lead) return null
 
   const handleStageChange = async (newStage: PipelineStage) => {
+    if (newStage === 'won' && !lead.projectId) {
+      setConvertModalOpen(true)
+      return
+    }
     setStage(newStage)
     await updateLeadStage({ leadId: lead._id, stage: newStage })
   }
@@ -389,6 +398,14 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
                 </div>
               </div>
 
+              {/* Project linked badge */}
+              {lead.projectId && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                  <Check className="w-3 h-3" />
+                  Project linked
+                </div>
+              )}
+
               {/* Source */}
               <div className="space-y-2">
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Source</label>
@@ -485,6 +502,15 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Convert to Project modal */}
+      <ConvertToProjectModal
+        lead={lead}
+        orgId={_orgId}
+        open={convertModalOpen}
+        onOpenChange={setConvertModalOpen}
+        onConverted={() => onOpenChange(false)}
+      />
     </Dialog>
   )
 }
