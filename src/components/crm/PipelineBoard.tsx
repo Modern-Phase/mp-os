@@ -5,7 +5,6 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { PipelineStage } from '~/convex/schema'
-import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
 import { ScrollArea } from '@/ui/scroll-area'
@@ -16,9 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Filter, Plus, LayoutGrid } from 'lucide-react'
+import { Filter, Plus, LayoutGrid, ChevronRight } from 'lucide-react'
+import { cn } from '@/utils/misc'
 import { LeadCard } from '@/components/crm/LeadCard'
 import { LeadDetailDialog } from '@/components/crm/LeadDetailDialog'
+import { STATUS_DOT_COLORS, STATUS_ACCENT_COLORS } from '@/components/kanban/kanban-utils'
 
 const STAGES: PipelineStage[] = [
   'new_lead',
@@ -40,16 +41,6 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
   lost: 'Lost',
 }
 
-const STAGE_COLORS: Record<PipelineStage, string> = {
-  new_lead: 'bg-gray-50 dark:bg-gray-900 border-gray-200',
-  qualified: 'bg-blue-50 dark:bg-blue-950 border-blue-200',
-  discovery: 'bg-indigo-50 dark:bg-indigo-950 border-indigo-200',
-  proposal: 'bg-purple-50 dark:bg-purple-950 border-purple-200',
-  negotiation: 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200',
-  won: 'bg-green-50 dark:bg-green-950 border-green-200',
-  lost: 'bg-red-50 dark:bg-red-950 border-red-200',
-}
-
 interface PipelineBoardProps {
   orgId: Id<'organizations'>
   agents: any[]
@@ -67,6 +58,13 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
   const [quickAddCompany, setQuickAddCompany] = useState('')
   const [quickAddContact, setQuickAddContact] = useState('')
   const [quickAddValue, setQuickAddValue] = useState('')
+
+  // Drag state
+  const [dragOverColumn, setDragOverColumn] = useState<PipelineStage | null>(null)
+
+  // Collapsible terminal columns
+  const [wonCollapsed, setWonCollapsed] = useState(false)
+  const [lostCollapsed, setLostCollapsed] = useState(false)
 
   // Filters
   const [activeAgentFilters, setActiveAgentFilters] = useState<Set<string>>(new Set())
@@ -97,6 +95,7 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
 
   const handleDrop = async (e: React.DragEvent, stage: PipelineStage) => {
     e.preventDefault()
+    setDragOverColumn(null)
     const leadId = e.dataTransfer.getData('leadId') as Id<'crmLeads'>
     if (leadId) {
       await updateLeadStage({ leadId, stage })
@@ -132,13 +131,25 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
     return getLeadsByStage(stage).reduce((sum: number, l: any) => sum + (l.value || 0), 0)
   }
 
+  const hasFilters = activeAgentFilters.size > 0 || sourceFilter !== 'all'
   const hasNoLeads = leads !== undefined && filteredLeads.length === 0
+
+  const isCollapsed = (stage: PipelineStage) => {
+    if (stage === 'won') return wonCollapsed
+    if (stage === 'lost') return lostCollapsed
+    return false
+  }
+
+  const toggleCollapse = (stage: PipelineStage) => {
+    if (stage === 'won') setWonCollapsed(!wonCollapsed)
+    if (stage === 'lost') setLostCollapsed(!lostCollapsed)
+  }
 
   return (
     <div className="flex flex-col h-full space-y-4">
       {/* Filter toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Filter className="w-3.5 h-3.5 text-muted-foreground/60" />
         <div className="flex items-center gap-1.5 flex-wrap">
           {agents
             .filter((a: any) => a.agentId)
@@ -146,11 +157,12 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
               <button
                 key={agent.agentId}
                 onClick={() => toggleAgentFilter(agent.agentId)}
-                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors border ${
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all border',
                   activeAgentFilters.size === 0 || activeAgentFilters.has(agent.agentId)
-                    ? 'border-current opacity-100'
-                    : 'border-transparent opacity-40'
-                }`}
+                    ? 'border-current/30 opacity-100'
+                    : 'border-transparent opacity-35 hover:opacity-55',
+                )}
                 style={{ color: agent.color }}
               >
                 {agent.emoji} {agent.name}
@@ -171,7 +183,7 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
-        {(activeAgentFilters.size > 0 || sourceFilter !== 'all') && (
+        {hasFilters && (
           <Button
             variant="ghost"
             size="sm"
@@ -186,121 +198,177 @@ export function PipelineBoard({ orgId, agents }: PipelineBoardProps) {
         )}
       </div>
 
-      {/* Pipeline columns */}
+      {/* Pipeline columns — horizontal scroll */}
       {hasNoLeads ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
-          <LayoutGrid className="h-12 w-12 opacity-10 mb-4" />
-          <p className="text-sm font-medium mb-2">No leads yet</p>
-          <p className="text-xs">Add your first lead to get started</p>
+        <div className="flex flex-col items-center justify-center flex-1 animate-fade-up">
+          <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+            <LayoutGrid className="h-8 w-8 text-muted-foreground/30" />
+          </div>
+          <h3 className="text-sm font-semibold text-foreground/80 mb-1">
+            {hasFilters ? 'No leads match filters' : 'No leads yet'}
+          </h3>
+          <p className="text-xs text-muted-foreground/60">
+            {hasFilters ? 'Try adjusting your filters' : 'Add your first lead to get started'}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-7 gap-2 flex-1 min-h-0">
-          {STAGES.map((stage) => (
-            <div
-              key={stage}
-              className={`flex flex-col rounded-lg border-2 ${STAGE_COLORS[stage]}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, stage)}
-            >
-              <div className="p-2.5 border-b border-opacity-20">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-xs">{STAGE_LABELS[stage]}</h3>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {getLeadsByStage(stage).length}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                      onClick={() => {
-                        setQuickAddStage(quickAddStage === stage ? null : stage)
-                        setQuickAddCompany('')
-                        setQuickAddContact('')
-                        setQuickAddValue('')
-                      }}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-                {getStageValue(stage) > 0 && (
-                  <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5">
-                    {formatValue(getStageValue(stage))}
-                  </p>
-                )}
-              </div>
+        <div className="flex gap-3 flex-1 min-h-0 overflow-x-auto pb-2">
+          {STAGES.map((stage) => {
+            const stageLeads = getLeadsByStage(stage)
+            const count = stageLeads.length
+            const stageValue = getStageValue(stage)
+            const collapsed = isCollapsed(stage)
+            const isTerminal = stage === 'won' || stage === 'lost'
 
-              <ScrollArea className="flex-1 p-1.5">
-                <div className="space-y-1.5">
-                  {/* Quick-add form */}
-                  {quickAddStage === stage && (
-                    <div className="p-2 border rounded-lg bg-background space-y-1.5">
-                      <Input
-                        placeholder="Company..."
-                        value={quickAddCompany}
-                        onChange={(e) => setQuickAddCompany(e.target.value)}
-                        className="h-7 text-xs"
-                        autoFocus
-                      />
-                      <Input
-                        placeholder="Contact name..."
-                        value={quickAddContact}
-                        onChange={(e) => setQuickAddContact(e.target.value)}
-                        className="h-7 text-xs"
-                      />
-                      <Input
-                        placeholder="Value ($)..."
-                        value={quickAddValue}
-                        onChange={(e) => setQuickAddValue(e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleQuickAdd(stage)
-                          if (e.key === 'Escape') setQuickAddStage(null)
-                        }}
-                      />
-                      <div className="flex justify-end gap-1">
+            return (
+              <div
+                key={stage}
+                className={cn(
+                  'flex-shrink-0 flex flex-col rounded-xl border transition-colors duration-200 group/col',
+                  'bg-muted/30 dark:bg-muted/20 border-border/50',
+                  collapsed ? 'w-[60px]' : 'w-[240px]',
+                  dragOverColumn === stage && 'border-primary/40 bg-primary/5',
+                )}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(stage) }}
+                onDragLeave={() => setDragOverColumn(null)}
+                onDrop={(e) => handleDrop(e, stage)}
+              >
+                {/* Column header */}
+                <div className={cn('px-3 py-2.5', collapsed && 'px-2')}>
+                  <div className="flex items-center justify-between">
+                    <div className={cn('flex items-center gap-2', collapsed && 'flex-col gap-1')}>
+                      <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[stage])} />
+                      <h3 className={cn(
+                        'font-medium text-xs text-foreground/90',
+                        collapsed && 'writing-mode-vertical text-[10px]',
+                      )}
+                        style={collapsed ? { writingMode: 'vertical-rl', textOrientation: 'mixed' } : undefined}
+                      >
+                        {STAGE_LABELS[stage]}
+                      </h3>
+                      <span className={cn('text-[10px] text-muted-foreground/60 tabular-nums', collapsed && 'text-center')}>
+                        {count}
+                      </span>
+                    </div>
+                    {!collapsed && (
+                      <div className="flex items-center gap-0.5">
+                        {isTerminal && count > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 opacity-0 group-hover/col:opacity-100 transition-opacity"
+                            onClick={() => toggleCollapse(stage)}
+                          >
+                            <ChevronRight className="w-3 h-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => setQuickAddStage(null)}
+                          className="h-5 w-5 p-0 opacity-0 group-hover/col:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setQuickAddStage(quickAddStage === stage ? null : stage)
+                            setQuickAddCompany('')
+                            setQuickAddContact('')
+                            setQuickAddValue('')
+                          }}
                         >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          disabled={!quickAddCompany.trim() || !quickAddContact.trim()}
-                          onClick={() => handleQuickAdd(stage)}
-                        >
-                          Add
+                          <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Lead cards */}
-                  {getLeadsByStage(stage).map((lead: any) => (
-                    <LeadCard
-                      key={lead._id}
-                      lead={lead}
-                      agents={agents}
-                      onClick={() => setSelectedLead(lead)}
-                      onDragStart={(e) => handleDragStart(e, lead._id)}
-                    />
-                  ))}
-
-                  {getLeadsByStage(stage).length === 0 && quickAddStage !== stage && (
-                    <p className="text-[10px] italic text-muted-foreground text-center py-6">
-                      No leads
+                    )}
+                  </div>
+                  {!collapsed && stageValue > 0 && (
+                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 ml-4">
+                      {formatValue(stageValue)}
                     </p>
                   )}
                 </div>
-              </ScrollArea>
-            </div>
-          ))}
+
+                {/* Accent line */}
+                <div className={cn('h-px bg-gradient-to-r from-transparent to-transparent', STATUS_ACCENT_COLORS[stage])} />
+
+                {/* Cards area */}
+                {!collapsed && (
+                  <ScrollArea className="flex-1 p-1.5">
+                    <div className="space-y-1.5">
+                      {/* Quick-add form */}
+                      {quickAddStage === stage && (
+                        <div className="border border-dashed border-muted-foreground/30 rounded-xl p-2.5 space-y-1.5 animate-fade-in">
+                          <Input
+                            variant="minimal"
+                            placeholder="Company..."
+                            value={quickAddCompany}
+                            onChange={(e) => setQuickAddCompany(e.target.value)}
+                            className="h-7 text-xs placeholder:text-muted-foreground/40"
+                            autoFocus
+                          />
+                          <Input
+                            variant="minimal"
+                            placeholder="Contact name..."
+                            value={quickAddContact}
+                            onChange={(e) => setQuickAddContact(e.target.value)}
+                            className="h-7 text-xs placeholder:text-muted-foreground/40"
+                          />
+                          <Input
+                            variant="minimal"
+                            placeholder="Value ($)..."
+                            value={quickAddValue}
+                            onChange={(e) => setQuickAddValue(e.target.value)}
+                            className="h-7 text-xs placeholder:text-muted-foreground/40"
+                            type="number"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleQuickAdd(stage)
+                              if (e.key === 'Escape') setQuickAddStage(null)
+                            }}
+                          />
+                          <p className="text-[10px] text-muted-foreground/50">
+                            Enter to add &middot; Esc to cancel
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Lead cards */}
+                      {stageLeads.map((lead: any) => (
+                        <LeadCard
+                          key={lead._id}
+                          lead={lead}
+                          agents={agents}
+                          onClick={() => setSelectedLead(lead)}
+                          onDragStart={(e) => handleDragStart(e, lead._id)}
+                        />
+                      ))}
+
+                      {count === 0 && quickAddStage !== stage && (
+                        <button
+                          onClick={() => {
+                            setQuickAddStage(stage)
+                            setQuickAddCompany('')
+                            setQuickAddContact('')
+                            setQuickAddValue('')
+                          }}
+                          className="flex flex-col items-center justify-center w-full py-6 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors group/empty"
+                        >
+                          <Plus className="w-4 h-4 mb-1 opacity-0 group-hover/empty:opacity-100 transition-opacity" />
+                          <span className="text-[10px]">No leads</span>
+                        </button>
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+
+                {/* Collapsed: click to expand */}
+                {collapsed && (
+                  <button
+                    onClick={() => toggleCollapse(stage)}
+                    className="flex-1 flex items-center justify-center"
+                  >
+                    <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

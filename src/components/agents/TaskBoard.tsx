@@ -5,8 +5,6 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { TaskStatus } from '~/convex/schema'
-import { Card, CardContent } from '@/ui/card'
-import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { ScrollArea } from '@/ui/scroll-area'
 import {
@@ -25,8 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Calendar, ArrowRightLeft, Plus, ClipboardList, Check } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight } from 'lucide-react'
+import { cn } from '@/utils/misc'
+import { TaskCard } from '@/components/kanban/TaskCard'
 import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
+import { STATUS_DOT_COLORS, STATUS_ACCENT_COLORS } from '@/components/kanban/kanban-utils'
 
 const COLUMNS: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'blocked', 'done']
 
@@ -61,18 +62,19 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
     priority: 'medium',
   })
 
-  // Task detail dialog
   const [selectedTask, setSelectedTask] = useState<any | null>(null)
-
-  // Inline quick-add
   const [quickAddColumn, setQuickAddColumn] = useState<TaskStatus | null>(null)
   const [quickAddTitle, setQuickAddTitle] = useState('')
+  const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
+  const [doneCollapsed, setDoneCollapsed] = useState(false)
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId)
   }
 
   const handleDrop = async (e: React.DragEvent, status: TaskStatus) => {
+    e.preventDefault()
+    setDragOverColumn(null)
     const taskId = e.dataTransfer.getData('taskId') as Id<'agentTasks'>
     if (taskId) {
       await updateStatus({ taskId, status })
@@ -81,7 +83,6 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
 
   const handleCreateTask = async () => {
     if (!newTask.title) return
-
     await createTask({
       orgId,
       title: newTask.title,
@@ -89,14 +90,12 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
       agentId: agent.agentId,
       priority: newTask.priority as any,
     })
-
     setNewTask({ title: '', description: '', priority: 'medium' })
     setNewTaskOpen(false)
   }
 
   const handleQuickAdd = async (status: TaskStatus) => {
     if (!quickAddTitle.trim()) return
-
     const taskId = await createTask({
       orgId,
       title: quickAddTitle.trim(),
@@ -104,11 +103,9 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
       agentId: agent.agentId,
       priority: 'medium',
     })
-
     if (status !== 'todo') {
       await updateStatus({ taskId, status })
     }
-
     setQuickAddTitle('')
     setQuickAddColumn(null)
   }
@@ -117,52 +114,48 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
     return tasks?.filter((t: any) => t.status === status) || []
   }
 
-  const getColumnColor = (status: TaskStatus) => {
-    switch (status) {
-      case 'backlog': return 'bg-gray-50 dark:bg-gray-900 border-gray-200'
-      case 'todo': return 'bg-blue-50 dark:bg-blue-950 border-blue-200'
-      case 'in_progress': return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200'
-      case 'review': return 'bg-purple-50 dark:bg-purple-950 border-purple-200'
-      case 'blocked': return 'bg-red-50 dark:bg-red-950 border-red-200'
-      case 'done': return 'bg-green-50 dark:bg-green-950 border-green-200'
-    }
-  }
-
   const allAgents = agents || [agent]
   const hasNoTasks = tasks !== undefined && tasks.length === 0
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{agent.emoji}</span>
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-lg"
+            style={{ backgroundColor: `${agent.color}15` }}
+          >
+            {agent.emoji}
+          </div>
           <div>
-            <h2 className="text-xl font-bold" style={{ color: agent.color }}>
+            <h2 className="text-lg font-semibold" style={{ color: agent.color }}>
               {agent.name}
             </h2>
-            <p className="text-sm text-muted-foreground">{agent.role}</p>
+            <p className="text-xs text-muted-foreground">{agent.role}</p>
           </div>
         </div>
 
         <Dialog open={newTaskOpen} onOpenChange={setNewTaskOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
+            <Button size="sm" variant="outline">
               <Plus className="w-4 h-4 mr-2" />
               New Task
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Task for {agent.name}</DialogTitle>
+              <DialogTitle>Create Task for {agent.name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <Input
                 placeholder="Task title"
                 value={newTask.title}
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                autoFocus
               />
               <Textarea
-                placeholder="Description"
+                placeholder="Description (optional)"
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
               />
@@ -180,45 +173,76 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
                   <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={handleCreateTask}>Create Task</Button>
+              <Button onClick={handleCreateTask} disabled={!newTask.title.trim()} className="w-full">
+                Create Task
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Board-level empty state or Kanban columns */}
+      {/* Board */}
       {hasNoTasks ? (
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-380px)] text-muted-foreground">
-          <ClipboardList className="h-12 w-12 opacity-10 mb-4" />
-          <p className="text-sm font-medium mb-2">No tasks for {agent.name}</p>
-          <p className="text-xs mb-4">Create a task to get this agent started</p>
-          <Button size="sm" onClick={() => setNewTaskOpen(true)}>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-380px)] animate-fade-up">
+          <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+            <ClipboardList className="h-8 w-8 text-muted-foreground/30" />
+          </div>
+          <h3 className="text-sm font-semibold text-foreground/80 mb-1">
+            No tasks for {agent.name}
+          </h3>
+          <p className="text-xs text-muted-foreground/60 max-w-[220px] text-center mb-4">
+            Create a task to get this agent working on something
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create first task
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-6 gap-3 h-[calc(100vh-280px)]">
-          {COLUMNS.map((status) => (
-            <div
-              key={status}
-              className={`flex flex-col rounded-lg border-2 ${getColumnColor(status)}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, status)}
-            >
-              <div className="p-3 border-b border-opacity-20">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">
-                    {STATUS_LABELS[status]}
-                  </h3>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {getTasksByColumn(status).length}
-                    </Badge>
+          {COLUMNS.map((status) => {
+            const columnTasks = getTasksByColumn(status)
+            const count = columnTasks.length
+            const isCollapsed = status === 'done' && doneCollapsed
+
+            return (
+              <div
+                key={status}
+                className={cn(
+                  'flex flex-col rounded-xl border transition-colors duration-200 group/col',
+                  'bg-muted/30 dark:bg-muted/20 border-border/50',
+                  dragOverColumn === status && 'border-primary/40 bg-primary/5',
+                )}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(status) }}
+                onDragLeave={() => setDragOverColumn(null)}
+                onDrop={(e) => handleDrop(e, status)}
+              >
+                {/* Column header */}
+                <div className="px-3 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[status])} />
+                    <h3 className="font-medium text-sm text-foreground/90">
+                      {STATUS_LABELS[status]}
+                    </h3>
+                    <span className="text-xs text-muted-foreground/60 tabular-nums">
+                      {count}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    {status === 'done' && count > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover/col:opacity-100 transition-opacity"
+                        onClick={() => setDoneCollapsed(!doneCollapsed)}
+                      >
+                        <ChevronRight className={cn('w-3.5 h-3.5 transition-transform', !doneCollapsed && 'rotate-90')} />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0"
+                      className="h-6 w-6 p-0 opacity-0 group-hover/col:opacity-100 transition-opacity"
                       onClick={() => {
                         setQuickAddColumn(quickAddColumn === status ? null : status)
                         setQuickAddTitle('')
@@ -228,97 +252,67 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
                     </Button>
                   </div>
                 </div>
-              </div>
 
-              <ScrollArea className="flex-1 p-2">
-                <div className="space-y-2">
-                  {/* Inline quick-add form */}
-                  {quickAddColumn === status && (
-                    <div className="p-2 border rounded-lg bg-background">
-                      <div className="flex gap-1">
-                        <Input
-                          placeholder="Task title..."
-                          value={quickAddTitle}
-                          onChange={(e) => setQuickAddTitle(e.target.value)}
-                          className="h-7 text-xs flex-1"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleQuickAdd(status)
-                            if (e.key === 'Escape') {
-                              setQuickAddColumn(null)
-                              setQuickAddTitle('')
-                            }
-                          }}
-                        />
-                        <Button
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          disabled={!quickAddTitle.trim()}
-                          onClick={() => handleQuickAdd(status)}
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                {/* Accent line */}
+                <div className={cn('h-px bg-gradient-to-r from-transparent to-transparent', STATUS_ACCENT_COLORS[status])} />
 
-                  {/* Task cards */}
-                  {getTasksByColumn(status).map((task: any) => (
-                    <Card
-                      key={task._id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task._id)}
-                      onClick={() => setSelectedTask(task)}
-                      className="cursor-move hover:shadow-md transition-shadow"
-                    >
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-medium text-sm line-clamp-2">
-                            {task.title}
-                          </h4>
-                          {task.handoffFrom && (
-                            <ArrowRightLeft className="w-4 h-4 text-blue-500" />
-                          )}
-                        </div>
-
-                        {task.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {task.description}
+                {/* Cards area */}
+                {!isCollapsed && (
+                  <ScrollArea className="flex-1 p-2">
+                    <div className="space-y-2">
+                      {/* Quick-add ghost card */}
+                      {quickAddColumn === status && (
+                        <div className="border border-dashed border-muted-foreground/30 rounded-xl p-3 animate-fade-in">
+                          <Input
+                            variant="minimal"
+                            placeholder="Task title..."
+                            value={quickAddTitle}
+                            onChange={(e) => setQuickAddTitle(e.target.value)}
+                            className="h-8 text-sm placeholder:text-muted-foreground/40"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && quickAddTitle.trim()) handleQuickAdd(status)
+                              if (e.key === 'Escape') {
+                                setQuickAddColumn(null)
+                                setQuickAddTitle('')
+                              }
+                            }}
+                          />
+                          <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                            Enter to add &middot; Esc to cancel
                           </p>
-                        )}
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {task.priority === 'urgent' && (
-                            <Badge variant="destructive" className="text-[10px]">
-                              Urgent
-                            </Badge>
-                          )}
-                          {task.priority === 'high' && (
-                            <Badge className="text-[10px] bg-orange-500">
-                              High
-                            </Badge>
-                          )}
-                          {task.dueDate && (
-                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </div>
-                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      )}
 
-                  {/* Column empty state */}
-                  {getTasksByColumn(status).length === 0 && quickAddColumn !== status && (
-                    <p className="text-xs italic text-muted-foreground text-center py-8">
-                      No tasks
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          ))}
+                      {/* Task cards */}
+                      {columnTasks.map((task: any) => (
+                        <TaskCard
+                          key={task._id}
+                          task={task}
+                          onDragStart={(e) => handleDragStart(e, task._id)}
+                          onClick={() => setSelectedTask(task)}
+                        />
+                      ))}
+
+                      {/* Column empty state */}
+                      {count === 0 && quickAddColumn !== status && (
+                        <button
+                          onClick={() => {
+                            setQuickAddColumn(status)
+                            setQuickAddTitle('')
+                          }}
+                          className="flex flex-col items-center justify-center w-full py-8 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors group/empty"
+                        >
+                          <Plus className="w-4 h-4 mb-1 opacity-0 group-hover/empty:opacity-100 transition-opacity" />
+                          <span className="text-[10px]">No tasks</span>
+                        </button>
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

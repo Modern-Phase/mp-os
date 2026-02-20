@@ -1,6 +1,6 @@
 // src/components/crm/LeadDetailDialog.tsx
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
@@ -15,7 +15,6 @@ import {
 import { Input } from '@/ui/input'
 import { Textarea } from '@/ui/textarea'
 import { Button } from '@/ui/button'
-import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import {
   Select,
@@ -35,7 +34,9 @@ import {
   StickyNote,
   Send,
   PenLine,
+  X,
 } from 'lucide-react'
+import { cn } from '@/utils/misc'
 
 const STAGE_OPTIONS: { value: PipelineStage; label: string }[] = [
   { value: 'new_lead', label: 'New Lead' },
@@ -61,8 +62,8 @@ const ACTIVITY_TYPE_OPTIONS: { value: CrmActivityType; label: string; icon: any 
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'meeting', label: 'Meeting', icon: Calendar },
   { value: 'note', label: 'Note', icon: StickyNote },
-  { value: 'proposal_sent', label: 'Proposal Sent', icon: Send },
-  { value: 'contract_sent', label: 'Contract Sent', icon: FileText },
+  { value: 'proposal_sent', label: 'Proposal', icon: Send },
+  { value: 'contract_sent', label: 'Contract', icon: FileText },
 ]
 
 const ACTIVITY_ICONS: Record<string, any> = {
@@ -108,13 +109,13 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
   const [nextStep, setNextStep] = useState('')
   const [nextFollowUp, setNextFollowUp] = useState('')
   const [assignedAgent, setAssignedAgent] = useState('')
-  const [tags, setTags] = useState('')
+  const [tagsList, setTagsList] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
   const [lostReason, setLostReason] = useState('')
 
   // Activity form
   const [activityType, setActivityType] = useState<CrmActivityType>('note')
   const [activityTitle, setActivityTitle] = useState('')
-  const [activityDesc, setActivityDesc] = useState('')
 
   useEffect(() => {
     if (lead) {
@@ -131,23 +132,34 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
       setNextStep(lead.nextStep || '')
       setNextFollowUp(lead.nextFollowUp ? new Date(lead.nextFollowUp).toISOString().split('T')[0] : '')
       setAssignedAgent(lead.assignedAgent || '')
-      setTags((lead.tags || []).join(', '))
+      setTagsList(lead.tags || [])
+      setNewTag('')
       setLostReason(lead.lostReason || '')
       setActivityTitle('')
-      setActivityDesc('')
     }
   }, [lead?._id])
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!lead) return false
+    const tagsChanged = JSON.stringify(tagsList) !== JSON.stringify(lead.tags || [])
+    return (
+      company !== (lead.company || '') ||
+      contactName !== (lead.contactName || '') ||
+      contactEmail !== (lead.contactEmail || '') ||
+      description !== (lead.description || '') ||
+      tagsChanged
+    )
+  }, [company, contactName, contactEmail, description, tagsList, lead])
+
   if (!lead) return null
 
-  const handleStageChange = async (newStage: string) => {
-    setStage(newStage as PipelineStage)
-    await updateLeadStage({ leadId: lead._id, stage: newStage as PipelineStage })
+  const handleStageChange = async (newStage: PipelineStage) => {
+    setStage(newStage)
+    await updateLeadStage({ leadId: lead._id, stage: newStage })
   }
 
   const handleSave = async () => {
     const changes: Record<string, any> = {}
-
     if (company !== lead.company) changes.company = company
     if (contactName !== lead.contactName) changes.contactName = contactName
     if (contactEmail !== (lead.contactEmail || '')) changes.contactEmail = contactEmail || undefined
@@ -158,24 +170,15 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
     if (description !== (lead.description || '')) changes.description = description || undefined
     if (nextStep !== (lead.nextStep || '')) changes.nextStep = nextStep || undefined
     if (lostReason !== (lead.lostReason || '')) changes.lostReason = lostReason || undefined
-
     const newValue = value ? Math.round(parseFloat(value) * 100) : undefined
     if (newValue !== lead.value) changes.value = newValue
-
     const newFollowUp = nextFollowUp ? new Date(nextFollowUp).getTime() : undefined
     if (newFollowUp !== lead.nextFollowUp) changes.nextFollowUp = newFollowUp
-
-    if (assignedAgent !== (lead.assignedAgent || '')) {
-      changes.assignedAgent = assignedAgent || undefined
-    }
-
-    const newTags = tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : []
-    if (JSON.stringify(newTags) !== JSON.stringify(lead.tags || [])) changes.tags = newTags
-
+    if (assignedAgent !== (lead.assignedAgent || '')) changes.assignedAgent = assignedAgent || undefined
+    if (JSON.stringify(tagsList) !== JSON.stringify(lead.tags || [])) changes.tags = tagsList
     if (Object.keys(changes).length > 0) {
       await updateLead({ leadId: lead._id, ...changes })
     }
-
     onOpenChange(false)
   }
 
@@ -191,224 +194,295 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
       leadId: lead._id,
       type: activityType,
       title: activityTitle.trim(),
-      description: activityDesc.trim() || undefined,
     })
     setActivityTitle('')
-    setActivityDesc('')
   }
 
   const getAgentInfo = (agentId: string) => {
     return agents.find((a: any) => a.agentId === agentId) || { name: agentId, emoji: '👤', color: '#6B7280' }
   }
 
+  const removeTag = (index: number) => {
+    setTagsList((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim()
+    if (trimmed && !tagsList.includes(trimmed)) {
+      setTagsList((prev) => [...prev, trimmed])
+    }
+    setNewTag('')
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="pb-0">
           <DialogTitle className="sr-only">Lead Details</DialogTitle>
-          <div className="space-y-3">
-            {/* Company + Stage */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <Input
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                className="text-lg font-semibold border-none px-0 focus-visible:ring-0 shadow-none flex-1"
-                placeholder="Company name"
-              />
-              <Select value={stage} onValueChange={handleStageChange}>
-                <SelectTrigger className="w-auto h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAGE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Value */}
-            <div className="flex items-center gap-2">
+          {/* Company + Value header */}
+          <div className="flex items-center gap-3">
+            <Input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              variant="minimal"
+              className="text-xl font-semibold px-0 focus-visible:ring-0 shadow-none border-b border-transparent focus-visible:border-border/50 transition-colors rounded-none flex-1"
+              placeholder="Company name"
+            />
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-sm text-muted-foreground">$</span>
               <Input
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="Deal value"
+                placeholder="Value"
                 type="number"
-                className="w-32 h-8"
+                className="w-24 h-8 text-sm"
               />
-              {assignedAgent && (
-                <div
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-                  style={{
-                    backgroundColor: `${getAgentInfo(assignedAgent).color}15`,
-                    color: getAgentInfo(assignedAgent).color,
-                  }}
-                >
-                  {getAgentInfo(assignedAgent).emoji} {getAgentInfo(assignedAgent).name}
-                </div>
-              )}
             </div>
           </div>
-        </DialogHeader>
-
-        <div className="space-y-5 mt-2">
-          {/* Contact Info */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contact</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" />
-              <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Title / Role" />
-              <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" type="email" />
-              <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" />
-              <Input value={contactLinkedin} onChange={(e) => setContactLinkedin(e.target.value)} placeholder="LinkedIn URL" className="col-span-2" />
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Source</label>
-              <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SOURCE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned Agent</label>
-              <Select value={assignedAgent} onValueChange={setAssignedAgent}>
-                <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                <SelectContent>
-                  {agents.map((agent: any) => (
-                    <SelectItem key={agent.agentId} value={agent.agentId}>
-                      {agent.emoji} {agent.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="About this lead..." rows={2} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Next Step</label>
-              <Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="e.g. Schedule discovery call" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Follow Up Date</label>
-              <Input type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
-            <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Comma-separated tags..." />
-            {tags && (
-              <div className="flex gap-1 flex-wrap">
-                {tags.split(',').map((t) => t.trim()).filter(Boolean).map((tag, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Lost Reason */}
-          {stage === 'lost' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lost Reason</label>
-              <Input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Why was this lead lost?" />
+          {assignedAgent && (
+            <div
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mt-2 w-fit"
+              style={{
+                backgroundColor: `${getAgentInfo(assignedAgent).color}12`,
+                color: getAgentInfo(assignedAgent).color,
+              }}
+            >
+              {getAgentInfo(assignedAgent).emoji} {getAgentInfo(assignedAgent).name}
             </div>
           )}
+        </DialogHeader>
 
-          {/* Activity Timeline */}
-          <div className="space-y-3 border-t pt-4">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Activity Timeline</h3>
+        <div className="flex-1 overflow-y-auto mt-4">
+          <div className="grid grid-cols-[1fr,240px] gap-6">
+            {/* LEFT: Main content */}
+            <div className="space-y-5 min-w-0">
+              {/* Contact Info */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contact</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" className="h-8 text-sm" />
+                  <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Title / Role" className="h-8 text-sm" />
+                  <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" type="email" className="h-8 text-sm" />
+                  <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="h-8 text-sm" />
+                  <Input value={contactLinkedin} onChange={(e) => setContactLinkedin(e.target.value)} placeholder="LinkedIn URL" className="col-span-2 h-8 text-sm" />
+                </div>
+              </div>
 
-            {/* Add activity form */}
-            <div className="flex gap-2 items-start">
-              <Select value={activityType} onValueChange={(v) => setActivityType(v as CrmActivityType)}>
-                <SelectTrigger className="w-36 h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTIVITY_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                value={activityTitle}
-                onChange={(e) => setActivityTitle(e.target.value)}
-                placeholder="Activity title..."
-                className="h-8 text-xs flex-1"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddActivity() }}
-              />
-              <Button size="sm" className="h-8" onClick={handleAddActivity} disabled={!activityTitle.trim()}>
-                Add
-              </Button>
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="About this lead..." rows={2} className="resize-none" />
+              </div>
+
+              {/* Next Step */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Next Step</label>
+                <Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="e.g. Schedule discovery call" className="h-8 text-sm" />
+              </div>
+
+              {/* Lost Reason */}
+              {stage === 'lost' && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Lost Reason</label>
+                  <Input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Why was this lead lost?" className="h-8 text-sm" />
+                </div>
+              )}
+
+              {/* Activity Timeline */}
+              <div className="space-y-3 border-t pt-4">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Activity</label>
+
+                {/* Add activity form */}
+                <div className="flex gap-2 items-center">
+                  <Select value={activityType} onValueChange={(v) => setActivityType(v as CrmActivityType)}>
+                    <SelectTrigger className="w-28 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACTIVITY_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={activityTitle}
+                    onChange={(e) => setActivityTitle(e.target.value)}
+                    placeholder="Activity title..."
+                    className="h-8 text-xs flex-1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddActivity() }}
+                  />
+                  <Button size="sm" className="h-8" onClick={handleAddActivity} disabled={!activityTitle.trim()}>
+                    Add
+                  </Button>
+                </div>
+
+                {/* Timeline with vertical line */}
+                <ScrollArea className="max-h-48">
+                  <div className="relative pl-5">
+                    {/* Vertical line */}
+                    {(activities?.length ?? 0) > 0 && (
+                      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+                    )}
+                    <div className="space-y-1">
+                      {activities?.map((activity: any) => {
+                        const Icon = ACTIVITY_ICONS[activity.type] || MessageSquare
+                        const actAgent = activity.agentId ? getAgentInfo(activity.agentId) : null
+                        return (
+                          <div key={activity._id} className="relative flex items-start gap-3 py-1.5">
+                            {/* Timeline dot */}
+                            <div className="absolute -left-5 top-2.5 w-[7px] h-[7px] rounded-full bg-border ring-2 ring-background" />
+                            <Icon className="w-3.5 h-3.5 mt-0.5 text-muted-foreground/60 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium leading-tight">{activity.title}</p>
+                              {activity.description && (
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">{activity.description}</p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-muted-foreground/60">
+                                  {new Date(activity.timestamp).toLocaleString()}
+                                </span>
+                                {actAgent && (
+                                  <span className="text-[10px]" style={{ color: actAgent.color }}>
+                                    {actAgent.emoji} {actAgent.name}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {activities?.length === 0 && (
+                        <p className="text-xs italic text-muted-foreground/50 text-center py-4">No activities yet</p>
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Metadata */}
+              <div className="text-xs text-muted-foreground/70 pt-3 border-t">
+                Created: {new Date(lead._creationTime).toLocaleString()}
+                {lead.closedAt && ` | Closed: ${new Date(lead.closedAt).toLocaleString()}`}
+              </div>
             </div>
 
-            {/* Timeline */}
-            <ScrollArea className="max-h-48">
+            {/* RIGHT: Metadata sidebar */}
+            <div className="space-y-5 border-l pl-6">
+              {/* Stage pills (2-col grid) */}
               <div className="space-y-2">
-                {activities?.map((activity: any) => {
-                  const Icon = ACTIVITY_ICONS[activity.type] || MessageSquare
-                  const actAgent = activity.agentId ? getAgentInfo(activity.agentId) : null
-                  return (
-                    <div key={activity._id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
-                      <Icon className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{activity.title}</p>
-                        {activity.description && (
-                          <p className="text-xs text-muted-foreground">{activity.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(activity.timestamp).toLocaleString()}
-                          </span>
-                          {actAgent && (
-                            <span className="text-[10px]" style={{ color: actAgent.color }}>
-                              {actAgent.emoji} {actAgent.name}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                {activities?.length === 0 && (
-                  <p className="text-xs italic text-muted-foreground text-center py-4">No activities yet</p>
-                )}
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Stage</label>
+                <div className="grid grid-cols-2 gap-1">
+                  {STAGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleStageChange(opt.value)}
+                      className={cn(
+                        'px-2 py-1.5 rounded-md text-[11px] font-medium transition-all text-left',
+                        stage === opt.value
+                          ? 'bg-foreground text-background shadow-sm'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </ScrollArea>
-          </div>
 
-          {/* Metadata */}
-          <div className="text-xs text-muted-foreground pt-2 border-t">
-            Created: {new Date(lead._creationTime).toLocaleString()}
-            {lead.closedAt && ` | Closed: ${new Date(lead.closedAt).toLocaleString()}`}
+              {/* Source */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Source</label>
+                <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SOURCE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Agent */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Agent</label>
+                <Select value={assignedAgent} onValueChange={setAssignedAgent}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectContent>
+                    {agents.map((agent: any) => (
+                      <SelectItem key={agent.agentId} value={agent.agentId}>
+                        {agent.emoji} {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Follow Up Date */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Follow Up</label>
+                <Input type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} className="h-8" />
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
+                {tagsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {tagsList.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => removeTag(i)}
+                          className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <Input
+                  placeholder="Add tag..."
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  className="h-7 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTag.trim()) {
+                      e.preventDefault()
+                      addTag(newTag)
+                    }
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between mt-4">
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
+        {/* Footer */}
+        <DialogFooter className="flex items-center justify-between sm:justify-between pt-4 border-t mt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleDelete}
+          >
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
-          <Button size="sm" onClick={handleSave}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
-          </Button>
+          <div className="flex items-center gap-3">
+            {hasUnsavedChanges && (
+              <span className="text-xs text-muted-foreground/60 animate-fade-in">
+                Unsaved changes
+              </span>
+            )}
+            <Button size="sm" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" />
+              Save
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

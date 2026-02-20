@@ -359,6 +359,25 @@ export const updateQueueStatus = internalMutation({
   },
 });
 
+// Internal: Close all active sessions (forces agents to start fresh with updated SOUL.md)
+export const closeAllSessions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const activeSessions = await ctx.db
+      .query("agentChatSessions")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    let closed = 0;
+    for (const session of activeSessions) {
+      await ctx.db.patch(session._id, { status: "closed" });
+      closed++;
+    }
+    console.log(`[agentChat] Closed ${closed} active sessions`);
+    return closed;
+  },
+});
+
 // Helper to get auth user
 async function getAuthUserId(ctx: any): Promise<any | null> {
   const identity = await ctx.auth.getUserIdentity();
