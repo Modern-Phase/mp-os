@@ -11,6 +11,7 @@ import {
   BarChart3,
   MessageSquare,
   Bot,
+  FolderKanban,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
@@ -25,11 +26,13 @@ import {
 import { Button } from "@/ui/button";
 import { Logo } from "@/ui/logo";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
+import { NotificationPanel } from "@/components/NotificationPanel";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { User } from "~/types";
 
 const navItems = [
   { label: "Mission Control", path: "/dashboard", icon: Home },
+  { label: "Projects", path: "/dashboard/projects", icon: FolderKanban },
   { label: "CRM", path: "/dashboard/crm", icon: Users },
   { label: "Documents", path: "/dashboard/documents", icon: FileText },
   { label: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
@@ -102,6 +105,8 @@ export function Navigation({ user }: { user: User }) {
               <Menu className="h-5 w-5" />
             )}
           </Button>
+
+          <NotificationPanel />
 
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>

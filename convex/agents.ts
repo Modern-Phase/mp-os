@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { query, mutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { agentIdValidator, taskStatusValidator, priorityValidator, AGENT_IDS } from "./schema";
 
 // ========== AGENT DEFINITIONS ==========
@@ -313,6 +314,21 @@ export const updateTaskStatus = mutation({
       timestamp: Date.now(),
     });
 
+    // Notify task creator when completed
+    if (args.status === "done" && task.createdBy) {
+      const agentDef = AGENT_DEFINITIONS[task.agentId];
+      await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+        userId: task.createdBy,
+        orgId: task.orgId,
+        type: "task_completed",
+        title: "Task completed",
+        body: `${agentDef?.emoji || ""} ${agentDef?.name || task.agentId} completed "${task.title}"`,
+        resourceType: "task",
+        resourceId: String(args.taskId),
+        agentId: task.agentId,
+      });
+    }
+
     return true;
   },
 });
@@ -345,6 +361,20 @@ export const handoffTask = mutation({
       target: `${task.title} → ${args.toAgentId}`,
       taskId: args.taskId,
       timestamp: Date.now(),
+    });
+
+    // Notify task assignee about handoff
+    const fromAgent = AGENT_DEFINITIONS[task.agentId];
+    const toAgent = AGENT_DEFINITIONS[args.toAgentId];
+    await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+      userId: task.assignedTo,
+      orgId: task.orgId,
+      type: "task_handoff",
+      title: "Task handoff",
+      body: `${fromAgent?.emoji || ""} ${fromAgent?.name || task.agentId} handed off "${task.title}" to ${toAgent?.emoji || ""} ${toAgent?.name || args.toAgentId}${args.note ? `: ${args.note}` : ""}`,
+      resourceType: "task",
+      resourceId: String(args.taskId),
+      agentId: args.toAgentId,
     });
 
     return true;
@@ -419,6 +449,159 @@ export const deleteTask = mutation({
     });
 
     return true;
+  },
+});
+
+// ========== HANDOFF INBOX ==========
+
+export const getHandoffInbox = query({
+  args: {
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const tasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("handoffTo", (q) => q.eq("handoffTo", args.agentId))
+      .filter((q) => q.eq(q.field("orgId"), args.orgId))
+      .collect();
+
+    return tasks.sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+export const acceptHandoff = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+    if (!task.handoffTo) throw new Error("No pending handoff");
+
+    const toAgentId = task.handoffTo;
+
+    await ctx.db.patch(args.taskId, {
+      agentId: toAgentId,
+      handoffFrom: undefined,
+      handoffTo: undefined,
+      handoffNote: undefined,
+    });
+
+    await ctx.db.insert("agentActivity", {
+      orgId: task.orgId,
+      agentId: toAgentId,
+      action: "task_handoff_accepted",
+      target: task.title,
+      taskId: args.taskId,
+      timestamp: Date.now(),
+    });
+
+    // Notify task creator
+    const toAgent = AGENT_DEFINITIONS[toAgentId];
+    await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+      userId: task.createdBy,
+      orgId: task.orgId,
+      type: "task_handoff",
+      title: "Handoff accepted",
+      body: `${toAgent?.emoji || ""} ${toAgent?.name || toAgentId} accepted "${task.title}"`,
+      resourceType: "task",
+      resourceId: String(args.taskId),
+      agentId: toAgentId,
+    });
+
+    return true;
+  },
+});
+
+export const rejectHandoff = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+    reason: v.optional(v.string()),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+    if (!task.handoffFrom || !task.handoffTo) throw new Error("No pending handoff");
+
+    const fromAgentId = task.handoffFrom;
+    const toAgentId = task.handoffTo;
+
+    await ctx.db.patch(args.taskId, {
+      agentId: fromAgentId,
+      handoffFrom: undefined,
+      handoffTo: undefined,
+      handoffNote: undefined,
+    });
+
+    await ctx.db.insert("agentActivity", {
+      orgId: task.orgId,
+      agentId: toAgentId,
+      action: "task_handoff_rejected",
+      target: `${task.title}${args.reason ? ` — ${args.reason}` : ""}`,
+      taskId: args.taskId,
+      timestamp: Date.now(),
+    });
+
+    // Notify task creator
+    const toAgent = AGENT_DEFINITIONS[toAgentId];
+    await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+      userId: task.createdBy,
+      orgId: task.orgId,
+      type: "task_handoff",
+      title: "Handoff rejected",
+      body: `${toAgent?.emoji || ""} ${toAgent?.name || toAgentId} rejected "${task.title}"${args.reason ? `: ${args.reason}` : ""}`,
+      resourceType: "task",
+      resourceId: String(args.taskId),
+      agentId: fromAgentId,
+    });
+
+    return true;
+  },
+});
+
+export const getProjectOverview = query({
+  args: { projectId: v.id("agentProjects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+
+    const tasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("projectId", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const activity = await ctx.db
+      .query("agentActivity")
+      .withIndex("orgId_timestamp", (q) => q.eq("orgId", project.orgId))
+      .order("desc")
+      .take(50)
+      .then((items) => items.filter((a) => a.projectId === args.projectId));
+
+    // Find linked CRM lead
+    const leads = await ctx.db
+      .query("crmLeads")
+      .withIndex("orgId", (q) => q.eq("orgId", project.orgId))
+      .collect();
+    const linkedLead = leads.find((l) => l.projectId === args.projectId);
+
+    const tasksByStatus = {
+      total: tasks.length,
+      done: tasks.filter((t) => t.status === "done").length,
+      in_progress: tasks.filter((t) => t.status === "in_progress").length,
+      blocked: tasks.filter((t) => t.status === "blocked").length,
+    };
+
+    return { project, tasks, tasksByStatus, activity, linkedLead };
   },
 });
 

@@ -24,6 +24,7 @@ import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutProjectsRouteImport } from './routes/_app/_auth/dashboard/_layout.projects'
 import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
@@ -110,6 +111,12 @@ const AppAuthDashboardLayoutSettingsRoute =
     path: '/settings',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutProjectsRoute =
+  AppAuthDashboardLayoutProjectsRouteImport.update({
+    id: '/projects',
+    path: '/projects',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutMissionControlRoute =
   AppAuthDashboardLayoutMissionControlRouteImport.update({
     id: '/mission-control',
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
+  '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
+  '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -231,6 +240,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
+  '/_app/_auth/dashboard/_layout/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/dashboard/documents'
     | '/dashboard/gdpr'
     | '/dashboard/mission-control'
+    | '/dashboard/projects'
     | '/dashboard/settings'
     | '/onboarding/username'
     | '/dashboard/'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/dashboard/documents'
     | '/dashboard/gdpr'
     | '/dashboard/mission-control'
+    | '/dashboard/projects'
     | '/onboarding/username'
     | '/dashboard'
     | '/dashboard/settings/billing'
@@ -304,6 +316,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/documents'
     | '/_app/_auth/dashboard/_layout/gdpr'
     | '/_app/_auth/dashboard/_layout/mission-control'
+    | '/_app/_auth/dashboard/_layout/projects'
     | '/_app/_auth/dashboard/_layout/settings'
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/projects': {
+      id: '/_app/_auth/dashboard/_layout/projects'
+      path: '/projects'
+      fullPath: '/dashboard/projects'
+      preLoaderRoute: typeof AppAuthDashboardLayoutProjectsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/mission-control': {
       id: '/_app/_auth/dashboard/_layout/mission-control'
       path: '/mission-control'
@@ -517,6 +537,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
   AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
+  AppAuthDashboardLayoutProjectsRoute: typeof AppAuthDashboardLayoutProjectsRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
 }
@@ -531,6 +552,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
     AppAuthDashboardLayoutMissionControlRoute:
       AppAuthDashboardLayoutMissionControlRoute,
+    AppAuthDashboardLayoutProjectsRoute: AppAuthDashboardLayoutProjectsRoute,
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
