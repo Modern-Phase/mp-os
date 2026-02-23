@@ -10,9 +10,39 @@ import { Button } from "@/ui/button";
 import { Avatar, AvatarFallback } from "@/ui/avatar";
 import { Textarea } from "@/ui/textarea";
 import { Badge } from "@/ui/badge";
-import { Send, Loader2, RotateCcw, ChevronDown, ListChecks } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  RotateCcw,
+  ChevronDown,
+  ListChecks,
+  Paperclip,
+  X,
+  FileText,
+} from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import type { Citation } from "@/components/chat/ChatMessage";
+
+const ACCEPTED_FILE_TYPES = ".csv,.txt,.md,.json,.tsv";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_INLINE_TEXT = 32 * 1024; // 32KB cap for inline content
+
+/** Strip <attached_file> tags from display content */
+function stripAttachedFileTags(content: string): string {
+  return content.replace(/<attached_file[^>]*>[\s\S]*?<\/attached_file>\s*/g, "").trim();
+}
+
+/** Format file size for display */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+interface AttachedFile {
+  file: File;
+  textContent: string;
+}
 
 interface AgentChatProps {
   agent: any;
@@ -23,8 +53,11 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messages = useQuery(api.agentChat.getAgentChatHistory, {
     orgId,
@@ -34,6 +67,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
 
   const createChatMessage = useMutation(api.agentChat.createChatMessage);
   const getOrCreateSession = useMutation(api.agentChat.getOrCreateSession);
+  const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
 
   // Only show "thinking" for actively streaming or recent pending (last msg, < 2 min)
   const isAgentResponding = (() => {
@@ -72,34 +106,111 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
     setIsAtBottom(true);
   }, []);
 
+  // File selection handler
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFileError(null);
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Reset input so the same file can be re-selected
+      e.target.value = "";
+
+      if (file.size > MAX_FILE_SIZE) {
+        setFileError(`File too large (${formatFileSize(file.size)}). Max 10MB.`);
+        return;
+      }
+
+      try {
+        const textContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.readAsText(file);
+        });
+
+        setAttachedFile({
+          file,
+          textContent: textContent.slice(0, MAX_INLINE_TEXT),
+        });
+      } catch {
+        setFileError("Failed to read file. Make sure it's a text-based file.");
+      }
+    },
+    [],
+  );
+
+  const removeAttachment = useCallback(() => {
+    setAttachedFile(null);
+    setFileError(null);
+  }, []);
+
   const handleSend = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (!message.trim() || sending) return;
+      if ((!message.trim() && !attachedFile) || sending) return;
 
       const content = message.trim();
+      const currentFile = attachedFile;
       setMessage("");
+      setAttachedFile(null);
+      setFileError(null);
       setSending(true);
+
       try {
         const sessionId = await getOrCreateSession({
           orgId,
           agentId: agent.agentId,
         });
+
+        // Upload file to Convex storage if attached
+        let attachment: {
+          name: string;
+          storageId: Id<"_storage">;
+          fileSize: number;
+          mimeType: string;
+          textContent: string;
+        } | undefined;
+
+        if (currentFile) {
+          const uploadUrl = await generateUploadUrl();
+          const uploadResponse = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": currentFile.file.type || "application/octet-stream" },
+            body: currentFile.file,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("File upload failed");
+          }
+
+          const { storageId } = await uploadResponse.json();
+          attachment = {
+            name: currentFile.file.name,
+            storageId,
+            fileSize: currentFile.file.size,
+            mimeType: currentFile.file.type || "application/octet-stream",
+            textContent: currentFile.textContent,
+          };
+        }
+
         await createChatMessage({
           orgId,
           agentId: agent.agentId,
-          content,
+          content: content || (currentFile ? `Attached file: ${currentFile.file.name}` : ""),
           role: "user",
           sessionId: sessionId || undefined,
+          attachment,
         });
       } catch (err) {
         setMessage(content);
+        setAttachedFile(currentFile);
         console.error("[AgentChat] Failed to send:", err);
       } finally {
         setSending(false);
       }
     },
-    [message, sending, orgId, agent.agentId, createChatMessage, getOrCreateSession],
+    [message, attachedFile, sending, orgId, agent.agentId, createChatMessage, getOrCreateSession, generateUploadUrl],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -220,17 +331,37 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                 }
               }
 
+              // Strip <attached_file> tags from user message display
+              const displayContent =
+                msg.role === "user"
+                  ? stripAttachedFileTags(msg.content)
+                  : msg.content;
+
+              const attachmentMeta = msg.metadata?.attachment;
+
               return (
                 <div key={msg._id}>
                   <ChatMessage
                     message={{
                       id: msg._id,
                       role: msg.role,
-                      content: msg.content,
+                      content: displayContent,
                     }}
                     isStreaming={isStreaming && msg.role !== "user"}
                     citations={citations}
                   />
+                  {/* Attachment badge */}
+                  {attachmentMeta && (
+                    <div className="mt-1.5">
+                      <Badge
+                        variant="outline"
+                        className="gap-1.5 text-xs font-normal text-muted-foreground"
+                      >
+                        <FileText className="h-3 w-3" />
+                        {attachmentMeta.name}
+                      </Badge>
+                    </div>
+                  )}
                   {/* Task creation badge */}
                   {msg.processedTaskDirectives > 0 && (
                     <div className="mt-2">
@@ -286,10 +417,58 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
         )}
       </main>
 
-      {/* Input Area — same style as ChatInterface */}
-      <div className="flex-shrink-0 border-t p-4 bg-background/50 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto">
-          <form onSubmit={handleSend} className="flex gap-2">
+      {/* Input Area */}
+      <div className="flex-shrink-0 border-t bg-background/50 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto px-4 pt-2 pb-4">
+          {/* File preview strip */}
+          {attachedFile && (
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg border border-border bg-muted/50">
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-foreground truncate">
+                {attachedFile.file.name}
+              </span>
+              <span className="text-xs text-muted-foreground shrink-0">
+                ({formatFileSize(attachedFile.file.size)})
+              </span>
+              <button
+                type="button"
+                onClick={removeAttachment}
+                className="ml-auto shrink-0 p-0.5 rounded hover:bg-accent transition-colors"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+
+          {/* File error */}
+          {fileError && (
+            <p className="text-xs text-destructive mb-2 px-1">{fileError}</p>
+          )}
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FILE_TYPES}
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <form onSubmit={handleSend} className="flex items-end gap-2">
+            {/* Paperclip button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 h-10 w-10"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+              title="Attach file (.csv, .txt, .md, .json, .tsv)"
+            >
+              <Paperclip className="h-4 w-4" />
+              <span className="sr-only">Attach file</span>
+            </Button>
+
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -298,10 +477,11 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
               className="flex-1 min-h-[80px] max-h-48"
               disabled={sending}
             />
+
             <Button
               type="submit"
               size="icon"
-              disabled={!message.trim() || sending}
+              disabled={(!message.trim() && !attachedFile) || sending}
               className="shrink-0"
             >
               {sending ? (

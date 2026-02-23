@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { agentIdValidator } from "./schema";
+import { agentIdValidator, PROCESSING_STATUS } from "./schema";
 import { VPS_ORCHESTRATOR_URL, VPS_API_KEY } from "./env";
 
 // Task directive instructions injected into every message to the agent
@@ -14,7 +14,9 @@ TASK MANAGEMENT: You are connected to a Mission Control dashboard. When you need
 - Do NOT write task files to disk — disk files are ephemeral and not visible to the team
 - The <task_directives> block will be automatically parsed and stripped from the displayed message
 
+Actions: create | update | complete | handoff
 Format: <task_directives>[{"action":"create","title":"Imperative title","description":"Details","priority":"medium","tags":["tag"]}]</task_directives>
+For handoff: <task_directives>[{"action":"handoff","taskId":"<convex_id>","toAgentId":"<agent_id>","note":"optional reason"}]</task_directives>
 Priority: low | medium | high | urgent
 
 MEMORY MANAGEMENT: You can store important facts, preferences, and learnings for future reference.
@@ -39,21 +41,54 @@ export const createChatMessage = mutation({
     role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
     sessionId: v.optional(v.string()),
     metadata: v.optional(v.any()),
+    attachment: v.optional(
+      v.object({
+        name: v.string(),
+        storageId: v.id("_storage"),
+        fileSize: v.number(),
+        mimeType: v.string(),
+        textContent: v.string(), // File content read on frontend (capped at 32KB)
+      }),
+    ),
   },
   returns: v.id("agentChatMessages"),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
+    // Build metadata with attachment info if present
+    const metadata = args.attachment
+      ? {
+          ...(args.metadata || {}),
+          attachment: {
+            name: args.attachment.name,
+            storageId: args.attachment.storageId,
+            fileSize: args.attachment.fileSize,
+            mimeType: args.attachment.mimeType,
+          },
+        }
+      : args.metadata;
+
+    // Build content — prepend file content in <attached_file> tags for the agent
+    let contentForAgent = args.content;
+    if (args.attachment) {
+      const ext = args.attachment.name.split(".").pop()?.toLowerCase() || "txt";
+      const sizeLabel =
+        args.attachment.fileSize < 1024
+          ? `${args.attachment.fileSize}B`
+          : `${Math.round(args.attachment.fileSize / 1024)}KB`;
+      contentForAgent = `<attached_file name="${args.attachment.name}" type="${ext}" size="${sizeLabel}">\n${args.attachment.textContent}\n</attached_file>\n\n${args.content}`;
+    }
+
     const messageId = await ctx.db.insert("agentChatMessages", {
       orgId: args.orgId,
       agentId: args.agentId,
       userId,
-      content: args.content,
+      content: contentForAgent,
       role: args.role,
       sessionId: args.sessionId,
       status: args.role === "user" ? "pending" : "delivered",
-      metadata: args.metadata,
+      metadata,
       timestamp: Date.now(),
     });
 
@@ -75,10 +110,26 @@ export const createChatMessage = mutation({
         messageId: messageId as string,
         agentId: args.agentId,
         orgId: args.orgId as string,
-        content: args.content,
+        content: contentForAgent,
         sessionId: args.sessionId,
         userId: userId as string,
       });
+
+      // If attachment present, schedule RAG pipeline processing
+      if (args.attachment) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.agentChat.INTERNAL_createDocumentFromAttachment,
+          {
+            orgId: args.orgId,
+            userId,
+            name: args.attachment.name,
+            storageId: args.attachment.storageId,
+            fileSize: args.attachment.fileSize,
+            mimeType: args.attachment.mimeType,
+          },
+        );
+      }
     }
 
     return messageId;
@@ -581,6 +632,108 @@ export const closeAllSessions = internalMutation({
     }
     console.log(`[agentChat] Closed ${closed} active sessions`);
     return closed;
+  },
+});
+
+// Internal: Find or create the "Agent Uploads" collection for an organization
+export const INTERNAL_ensureAgentUploadsCollection = internalMutation({
+  args: {
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Look for existing "Agent Uploads" collection in this org
+    const existing = await ctx.db
+      .query("documentCollections")
+      .withIndex("orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.eq(q.field("name"), "Agent Uploads"))
+      .first();
+
+    if (existing) return existing._id;
+
+    // Create it
+    return await ctx.db.insert("documentCollections", {
+      userId: args.userId,
+      orgId: args.orgId,
+      name: "Agent Uploads",
+      description: "Files uploaded through agent chat",
+      isDefault: false,
+    });
+  },
+});
+
+// Internal: Create a document from an agent chat attachment and schedule RAG processing
+export const INTERNAL_createDocumentFromAttachment = internalMutation({
+  args: {
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    name: v.string(),
+    storageId: v.id("_storage"),
+    fileSize: v.number(),
+    mimeType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Get or create the "Agent Uploads" collection
+    const collectionId = await ctx.db
+      .query("documentCollections")
+      .withIndex("orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.eq(q.field("name"), "Agent Uploads"))
+      .first()
+      .then((c) => c?._id);
+
+    const finalCollectionId =
+      collectionId ??
+      (await ctx.db.insert("documentCollections", {
+        userId: args.userId,
+        orgId: args.orgId,
+        name: "Agent Uploads",
+        description: "Files uploaded through agent chat",
+        isDefault: false,
+      }));
+
+    // Determine document type from mime
+    const ext = args.name.split(".").pop()?.toLowerCase() || "";
+    let type: "text" | "pdf" | "csv" | "image" | "audio" | "video" = "text";
+    if (ext === "csv" || ext === "tsv") type = "csv";
+    else if (ext === "pdf") type = "pdf";
+    else if (args.mimeType.startsWith("image/")) type = "image";
+
+    // Insert document
+    const documentId = await ctx.db.insert("documents", {
+      userId: args.userId,
+      orgId: args.orgId,
+      collectionId: finalCollectionId,
+      name: args.name,
+      type,
+      storageId: args.storageId,
+      fileSize: args.fileSize,
+      mimeType: args.mimeType,
+      processingStatus: PROCESSING_STATUS.PENDING,
+    });
+
+    // Create processing job
+    const jobId = await ctx.db.insert("processingJobs", {
+      documentId,
+      userId: args.userId,
+      status: "queued",
+      processedPages: 0,
+      processedChunks: 0,
+      startedAt: Date.now(),
+      statusMessage: "Queued for processing (agent upload)...",
+    });
+
+    // Schedule RAG pipeline
+    await ctx.scheduler.runAfter(0, internal.rag.processDocument, {
+      documentId,
+      userId: args.userId,
+      jobId,
+    });
+
+    console.log(
+      `[agentChat] Created document "${args.name}" in Agent Uploads collection → RAG processing scheduled`,
+    );
+
+    return documentId;
   },
 });
 
