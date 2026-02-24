@@ -24,10 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Loader2, Plus, Kanban, Table2, Database } from 'lucide-react'
+import { Loader2, Plus, Kanban, Table2, Database, BarChart3 } from 'lucide-react'
 import { PipelineBoard } from '@/components/crm/PipelineBoard'
 import { LeadsTable } from '@/components/crm/LeadsTable'
 import { LeadDetailDialog } from '@/components/crm/LeadDetailDialog'
+import { CrmAnalytics } from '@/components/crm/CrmAnalytics'
+import { CsvImportDialog } from '@/components/crm/CsvImportDialog'
 import siteConfig from '~/site.config'
 
 export const Route = createFileRoute('/_app/_auth/dashboard/_layout/crm')({
@@ -70,7 +72,7 @@ function CrmPage() {
   }, [orgId, seedTemplates])
 
   const createLead = useMutation(api.crm.createLead)
-  const seedCrmData = useMutation(api.crm.seedCrmData)
+  const seedCrmData = useMutation(api.crmSeed.seedCrmData)
 
   const [activeView, setActiveView] = useState('pipeline')
   const [addLeadOpen, setAddLeadOpen] = useState(false)
@@ -162,6 +164,7 @@ function CrmPage() {
             Load Demo Data
           </Button>
         )}
+        {orgId && <CsvImportDialog orgId={orgId} agents={agents || []} />}
         <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
@@ -254,6 +257,10 @@ function CrmPage() {
                 <Table2 className="w-4 h-4" />
                 Table
               </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-1.5">
+                <BarChart3 className="w-4 h-4" />
+                Analytics
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-4 flex-1 overflow-auto">
@@ -267,6 +274,11 @@ function CrmPage() {
                     agents={agents || []}
                     onSelectLead={setSelectedLead}
                   />
+                )}
+              </TabsContent>
+              <TabsContent value="analytics">
+                {orgId && (
+                  <CrmAnalytics orgId={orgId} agents={agents || []} />
                 )}
               </TabsContent>
             </div>

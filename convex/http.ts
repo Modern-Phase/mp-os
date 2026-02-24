@@ -3,7 +3,7 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { ERRORS } from "../errors";
-import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL, WEBHOOK_SECRET } from "./env";
+import { HELICONE_API_KEY, OPEN_ROUTER, SITE_URL, WEBHOOK_SECRET, DISCORD_BOT_API_KEY, OUTBOUND_ENGINE_API_KEY } from "./env";
 import { RATE_LIMITS } from "./rateLimit";
 import { canSendChatMessage } from "./usage";
 import {
@@ -829,6 +829,205 @@ http.route({
       });
     } catch (error) {
       console.error("[Agent Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
+// Discord bot webhook — receives messages from the Discord bot service
+http.route({
+  path: "/webhooks/discord-message",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Bot-API-Key",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/discord-message",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Authenticate via shared API key
+      const apiKey = request.headers.get("X-Bot-API-Key");
+      if (!DISCORD_BOT_API_KEY || apiKey !== DISCORD_BOT_API_KEY) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const body = await request.json();
+      const {
+        discordUserId,
+        discordUsername,
+        channelId,
+        guildId,
+        messageId: discordMessageId,
+        agentId,
+        content,
+        type,
+      } = body;
+
+      // Handle !link command — account linking
+      if (type === "link") {
+        const { code } = body;
+        if (!code || !discordUserId || !discordUsername || !guildId) {
+          return new Response(
+            JSON.stringify({ error: "Missing fields for link command" }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        const result = await ctx.runMutation(internal.discord.INTERNAL_verifyDiscordLink, {
+          code,
+          discordUserId,
+          discordUsername,
+          guildId,
+        });
+
+        return new Response(JSON.stringify(result), {
+          status: result.success ? 200 : 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Regular message — validate required fields
+      if (!discordUserId || !channelId || !content || !agentId) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: discordUserId, channelId, content, agentId" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Resolve channelId → orgId via discordChannelMap
+      const channelMap = await ctx.runMutation(internal.discord.INTERNAL_getChannelMap, {
+        channelId,
+      });
+
+      if (!channelMap || !channelMap.isActive) {
+        return new Response(
+          JSON.stringify({ error: "Channel not mapped or inactive" }),
+          { status: 404, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Create the message through the shared pipeline
+      const result = await ctx.runMutation(internal.discord.INTERNAL_createDiscordMessage, {
+        discordUserId,
+        discordUsername: discordUsername || "Unknown",
+        channelId,
+        guildId: guildId || "",
+        discordMessageId: discordMessageId || "",
+        agentId,
+        content,
+        orgId: channelMap.orgId,
+      });
+
+      if (!result.success) {
+        // Unlinked user — tell bot to respond with link instructions
+        return new Response(
+          JSON.stringify({ success: false, error: result.error }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[Discord Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
+// Outbound email engine (Instantly) webhook — receives email events
+http.route({
+  path: "/webhooks/outbound-engine",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/outbound-engine",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Authenticate via shared API key
+      const apiKey = request.headers.get("X-API-Key");
+      if (!OUTBOUND_ENGINE_API_KEY || apiKey !== OUTBOUND_ENGINE_API_KEY) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const body = await request.json();
+      const { event_type, lead_email, campaign_id, campaign_name, timestamp, workspace } = body;
+
+      // Validate required fields
+      if (!event_type || !lead_email || !campaign_id) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: event_type, lead_email, campaign_id" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Process event via internal mutation
+      const result = await ctx.runMutation(internal.outboundEmail.INTERNAL_processEmailEvent, {
+        eventType: event_type,
+        leadEmail: lead_email,
+        campaignId: campaign_id,
+        campaignName: campaign_name || "",
+        subject: body.subject,
+        timestamp: timestamp || Date.now(),
+        workspace: workspace || "",
+        externalEventId: body.event_id || body.id,
+        metadata: {
+          emailAccount: body.email_account,
+          uniboxUrl: body.unibox_url,
+          ...body,
+        },
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          eventId: result.eventId,
+          leadMatched: result.leadMatched,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    } catch (error) {
+      console.error("[Outbound Engine Webhook] Error:", error);
       return new Response(
         JSON.stringify({
           error: error instanceof Error ? error.message : "Webhook processing failed",

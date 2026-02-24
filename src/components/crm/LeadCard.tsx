@@ -84,7 +84,7 @@ export function LeadCard({ lead, agents, onClick, onDragStart }: LeadCardProps) 
         <h4 className="font-semibold text-sm leading-tight line-clamp-1">{lead.company}</h4>
 
         {/* Contact */}
-        <p className="text-xs text-muted-foreground/70 line-clamp-1">
+        <p className="text-xs text-foreground/70 line-clamp-1">
           {lead.contactName}
           {lead.contactTitle && ` — ${lead.contactTitle}`}
         </p>
@@ -104,7 +104,7 @@ export function LeadCard({ lead, agents, onClick, onDragStart }: LeadCardProps) 
               {agent.emoji}
             </div>
           )}
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-muted text-muted-foreground">
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-muted text-foreground/70">
             {SOURCE_LABELS[lead.source] || lead.source}
           </span>
           {lead.nextFollowUp && <FollowUpPill timestamp={lead.nextFollowUp} />}

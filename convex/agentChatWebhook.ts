@@ -11,13 +11,15 @@ import type { Id } from "./_generated/dataModel";
 // to create/update/complete tasks on the Kanban board.
 
 interface TaskDirective {
-  action: "create" | "update" | "complete";
+  action: "create" | "update" | "complete" | "handoff";
   title?: string;
   description?: string;
   priority?: "low" | "medium" | "high" | "urgent";
   agentId?: string;
   tags?: string[];
-  taskId?: string; // For update/complete — Convex ID of existing task
+  taskId?: string; // For update/complete/handoff — Convex ID of existing task
+  toAgentId?: string; // For handoff — target agent
+  note?: string; // For handoff — optional note
 }
 
 function parseTaskDirectives(content: string): {
@@ -41,6 +43,47 @@ function parseTaskDirectives(content: string): {
     } catch {
       // Malformed JSON — skip silently
       console.warn("[webhook] Failed to parse task_directives JSON");
+    }
+    cleanContent = cleanContent.replace(match[0], "");
+  }
+
+  return { directives, cleanContent: cleanContent.trim() };
+}
+
+// ── Outbound Directive Parsing ──
+// Agents can include <outbound_directives>[...]</outbound_directives> in responses
+// to trigger Instantly API actions (add leads, check analytics, etc.)
+
+interface OutboundDirective {
+  action: "add_to_campaign" | "check_analytics" | "list_campaigns" | "check_lead_status";
+  campaignId?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  customVariables?: Record<string, unknown>;
+}
+
+function parseOutboundDirectives(content: string): {
+  directives: OutboundDirective[];
+  cleanContent: string;
+} {
+  const regex = /<outbound_directives>([\s\S]*?)<\/outbound_directives>/g;
+  const directives: OutboundDirective[] = [];
+  let cleanContent = content;
+
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      for (const d of arr) {
+        if (d.action && typeof d.action === "string") {
+          directives.push(d as OutboundDirective);
+        }
+      }
+    } catch {
+      console.warn("[webhook] Failed to parse outbound_directives JSON");
     }
     cleanContent = cleanContent.replace(match[0], "");
   }
@@ -165,10 +208,14 @@ export const receiveAgentResponse = internalMutation({
       const finalContent = args.content || existing?.content || "";
       const { directives, cleanContent: taskCleanContent } = parseTaskDirectives(finalContent);
 
-      // Parse memory directives from the task-cleaned content
+      // Parse outbound directives from the task-cleaned content
+      const { directives: outboundDirectives, cleanContent: outboundCleanContent } =
+        parseOutboundDirectives(taskCleanContent);
+
+      // Parse memory directives from the outbound-cleaned content
       const { directives: memoryDirectives, cleanContent: memoryCleanContent } =
-        parseMemoryDirectives(taskCleanContent);
-      const displayContent = memoryCleanContent || taskCleanContent || finalContent;
+        parseMemoryDirectives(outboundCleanContent);
+      const displayContent = memoryCleanContent || outboundCleanContent || taskCleanContent || finalContent;
 
       let agentMessageId: Id<"agentChatMessages"> | undefined;
 
@@ -178,6 +225,7 @@ export const receiveAgentResponse = internalMutation({
           content: displayContent,
           status: "delivered",
           ...(directives.length > 0 && { processedTaskDirectives: directives.length }),
+          ...(outboundDirectives.length > 0 && { processedOutboundDirectives: outboundDirectives.length }),
           timestamp: Date.now(),
         });
         agentMessageId = existing._id;
@@ -196,6 +244,7 @@ export const receiveAgentResponse = internalMutation({
             runId: args.runId,
             replyTo: originalMsg._id,
             ...(directives.length > 0 && { processedTaskDirectives: directives.length }),
+            ...(outboundDirectives.length > 0 && { processedOutboundDirectives: outboundDirectives.length }),
             timestamp: Date.now(),
           });
         }
@@ -271,6 +320,42 @@ export const receiveAgentResponse = internalMutation({
                     });
                   }
                 }
+              } else if (directive.action === "handoff" && directive.taskId && directive.toAgentId) {
+                const taskDocId = ctx.db.normalizeId("agentTasks", directive.taskId);
+                if (taskDocId) {
+                  const task = await ctx.db.get(taskDocId);
+                  if (task && task.orgId === orgId) {
+                    await ctx.db.patch(taskDocId, {
+                      handoffFrom: task.agentId,
+                      handoffTo: directive.toAgentId as any,
+                      handoffNote: directive.note,
+                      status: "todo",
+                    });
+
+                    await ctx.db.insert("agentActivity", {
+                      orgId,
+                      agentId: args.agentId as any,
+                      action: "task_handoff_sent",
+                      target: `${task.title} → ${directive.toAgentId}`,
+                      taskId: taskDocId,
+                      timestamp: Date.now(),
+                    });
+
+                    // Notify task assignee
+                    await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+                      userId: task.assignedTo,
+                      orgId,
+                      type: "task_handoff",
+                      title: "Task handoff",
+                      body: `${args.agentId} handed off "${task.title}" to ${directive.toAgentId}${directive.note ? `: ${directive.note}` : ""}`,
+                      resourceType: "task",
+                      resourceId: String(taskDocId),
+                      agentId: directive.toAgentId as any,
+                    });
+
+                    console.log(`[webhook] Agent ${args.agentId} handed off task to ${directive.toAgentId}`);
+                  }
+                }
               }
             } catch (directiveError) {
               console.error("[webhook] Failed to process directive:", directiveError);
@@ -291,6 +376,66 @@ export const receiveAgentResponse = internalMutation({
             sourceMessageId: String(agentMessageId),
           });
           console.log(`[webhook] Scheduled ${memoryDirectives.length} memory directive(s) for ${args.agentId}`);
+        }
+      }
+
+      // ── Process Outbound Directives ──
+      if (outboundDirectives.length > 0) {
+        for (const directive of outboundDirectives) {
+          try {
+            if (directive.action === "add_to_campaign" && directive.campaignId && directive.email) {
+              await ctx.scheduler.runAfter(0, internal.instantly.INTERNAL_addLeadToCampaign, {
+                campaignId: directive.campaignId,
+                email: directive.email,
+                firstName: directive.firstName,
+                lastName: directive.lastName,
+                company: directive.company,
+                customVariables: directive.customVariables,
+              });
+              console.log(`[webhook] Scheduled add_to_campaign: ${directive.email} → ${directive.campaignId}`);
+            } else if (directive.action === "check_analytics" && directive.campaignId) {
+              await ctx.scheduler.runAfter(0, internal.instantly.INTERNAL_getCampaignAnalytics, {
+                campaignId: directive.campaignId,
+              });
+              console.log(`[webhook] Scheduled check_analytics for campaign ${directive.campaignId}`);
+            } else if (directive.action === "list_campaigns") {
+              await ctx.scheduler.runAfter(0, internal.instantly.INTERNAL_listCampaigns, {});
+              console.log("[webhook] Scheduled list_campaigns");
+            } else if (directive.action === "check_lead_status" && directive.email) {
+              await ctx.scheduler.runAfter(0, internal.instantly.INTERNAL_getLeadStatus, {
+                email: directive.email,
+                campaignId: directive.campaignId,
+              });
+              console.log(`[webhook] Scheduled check_lead_status for ${directive.email}`);
+            }
+          } catch (outboundError) {
+            console.error("[webhook] Failed to process outbound directive:", outboundError);
+          }
+        }
+      }
+
+      // Notify user that agent responded
+      const notifyOriginalMsg = await getOriginalMessage();
+      if (notifyOriginalMsg) {
+        await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
+          userId: notifyOriginalMsg.userId,
+          orgId: notifyOriginalMsg.orgId,
+          type: "agent_message",
+          title: "Agent response",
+          body: displayContent.slice(0, 120) + (displayContent.length > 120 ? "..." : ""),
+          resourceType: "message",
+          resourceId: agentMessageId ? String(agentMessageId) : undefined,
+          agentId: args.agentId as any,
+        });
+
+        // If this message originated from Discord, send the reply back
+        if (notifyOriginalMsg.metadata?.source === "discord") {
+          await ctx.scheduler.runAfter(0, internal.discord.INTERNAL_sendDiscordReply, {
+            channelId: notifyOriginalMsg.metadata.discordChannelId,
+            discordMessageId: notifyOriginalMsg.metadata.discordMessageId,
+            agentId: args.agentId,
+            content: displayContent,
+          });
         }
       }
 

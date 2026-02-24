@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Plus, ClipboardList, ChevronRight } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight, ArrowRightLeft, Check, X } from 'lucide-react'
 import { cn } from '@/utils/misc'
 import { TaskCard } from '@/components/kanban/TaskCard'
 import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
@@ -52,8 +52,15 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
     { orgId, agentId: agent.agentId }
   )
 
+  const handoffInbox = useQuery(
+    api.agents.getHandoffInbox,
+    { orgId, agentId: agent.agentId }
+  )
+
   const updateStatus = useMutation(api.agents.updateTaskStatus)
   const createTask = useMutation(api.agents.createTask)
+  const acceptHandoff = useMutation(api.agents.acceptHandoff)
+  const rejectHandoff = useMutation(api.agents.rejectHandoff)
 
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTask, setNewTask] = useState({
@@ -67,6 +74,8 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
   const [quickAddTitle, setQuickAddTitle] = useState('')
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
   const [doneCollapsed, setDoneCollapsed] = useState(false)
+  const [rejectingTaskId, setRejectingTaskId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId)
@@ -180,6 +189,97 @@ export function TaskBoard({ agent, orgId, agents }: TaskBoardProps) {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Handoff Inbox */}
+      {handoffInbox && handoffInbox.length > 0 && (
+        <div className="rounded-xl border-2 border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+            <ArrowRightLeft className="w-4 h-4" />
+            <h3 className="text-sm font-semibold">
+              Pending Handoffs ({handoffInbox.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {handoffInbox.map((task: any) => {
+              const fromAgent = allAgents.find((a: any) => a.agentId === task.handoffFrom)
+              const isRejecting = rejectingTaskId === task._id
+
+              return (
+                <div
+                  key={task._id}
+                  className="flex items-start gap-3 rounded-lg border bg-background p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{task.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      From {fromAgent ? `${fromAgent.emoji} ${fromAgent.name}` : task.handoffFrom}
+                      {task.handoffNote && ` — "${task.handoffNote}"`}
+                    </p>
+                    {isRejecting && (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          variant="minimal"
+                          placeholder="Reason (optional)"
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className="h-7 text-xs"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              setRejectingTaskId(null)
+                              setRejectReason('')
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 px-2 text-xs"
+                          onClick={async () => {
+                            await rejectHandoff({
+                              taskId: task._id,
+                              reason: rejectReason || undefined,
+                            })
+                            setRejectingTaskId(null)
+                            setRejectReason('')
+                          }}
+                        >
+                          Confirm
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {!isRejecting && (
+                    <div className="flex gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-950"
+                        onClick={() => acceptHandoff({ taskId: task._id })}
+                      >
+                        <Check className="w-3 h-3 mr-1" />
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950"
+                        onClick={() => {
+                          setRejectingTaskId(task._id)
+                          setRejectReason('')
+                        }}
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Board */}
       {hasNoTasks ? (

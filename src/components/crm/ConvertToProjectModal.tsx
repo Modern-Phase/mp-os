@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
+import { QUICK_WIN_TEMPLATES } from '~/convex/quickWinTemplates'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,7 @@ import { Input } from '@/ui/input'
 import { Textarea } from '@/ui/textarea'
 import { Button } from '@/ui/button'
 import { ScrollArea } from '@/ui/scroll-area'
-import { Loader2, FolderPlus, Check } from 'lucide-react'
+import { Loader2, FolderPlus, Check, Zap } from 'lucide-react'
 import { cn } from '@/utils/misc'
 
 // Agent emoji lookup (matches AGENT_DEFINITIONS in convex/agents.ts)
@@ -54,6 +55,7 @@ export function ConvertToProjectModal({
   const [description, setDescription] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [selectedQuickWin, setSelectedQuickWin] = useState<string | null>(null)
   const [isConverting, setIsConverting] = useState(false)
 
   // Pre-fill from lead when modal opens
@@ -64,6 +66,7 @@ export function ConvertToProjectModal({
       setDescription(lead.description || '')
       setTargetDate('')
       setSelectedTemplateId(null)
+      setSelectedQuickWin(null)
       setIsConverting(false)
     }
   }, [lead?._id, open])
@@ -93,6 +96,7 @@ export function ConvertToProjectModal({
         description: description.trim(),
         targetDate: targetDate ? new Date(targetDate).getTime() : Date.now() + 90 * 86400000,
         templateId: selectedTemplateId ? (selectedTemplateId as Id<'projectTemplates'>) : undefined,
+        quickWinTemplateId: selectedQuickWin || undefined,
       })
       onOpenChange(false)
       onConverted?.(projectId)
@@ -250,6 +254,40 @@ export function ConvertToProjectModal({
               )}
             </div>
           </div>
+
+          {/* Quick Win Picker */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Quick Win (optional)
+              </label>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {QUICK_WIN_TEMPLATES.map((qw) => (
+                <button
+                  key={qw.id}
+                  onClick={() => setSelectedQuickWin(selectedQuickWin === qw.id ? null : qw.id)}
+                  className={cn(
+                    'shrink-0 text-left px-3 py-2.5 rounded-lg text-xs transition-all border w-[160px]',
+                    selectedQuickWin === qw.id
+                      ? 'bg-amber-500/10 border-amber-500 text-foreground shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:border-muted-foreground/20',
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span>{qw.icon}</span>
+                    {qw.name}
+                  </div>
+                  <div className="mt-1 text-[10px] opacity-70 flex items-center gap-1.5">
+                    <span>{qw.agentEmoji} {qw.agentId}</span>
+                    <span>·</span>
+                    <span>{qw.estimatedHours}h</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between pt-4 border-t mt-4">
@@ -266,7 +304,7 @@ export function ConvertToProjectModal({
             ) : (
               <Check className="w-4 h-4 mr-2" />
             )}
-            Create Project{taskCount > 0 ? ` & ${taskCount} Tasks` : ''}
+            Create Project{taskCount > 0 ? ` & ${taskCount} Tasks` : ''}{selectedQuickWin ? ' + Quick Win' : ''}
           </Button>
         </DialogFooter>
       </DialogContent>

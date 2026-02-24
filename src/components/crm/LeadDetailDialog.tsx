@@ -104,6 +104,8 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
   const [contactPhone, setContactPhone] = useState('')
   const [contactLinkedin, setContactLinkedin] = useState('')
   const [contactTitle, setContactTitle] = useState('')
+  const [website, setWebsite] = useState('')
+  const [address, setAddress] = useState('')
   const [stage, setStage] = useState<PipelineStage>('new_lead')
   const [source, setSource] = useState<LeadSource>('other')
   const [value, setValue] = useState('')
@@ -130,6 +132,8 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
       setContactPhone(lead.contactPhone || '')
       setContactLinkedin(lead.contactLinkedin || '')
       setContactTitle(lead.contactTitle || '')
+      setWebsite(lead.website || '')
+      setAddress(lead.address || '')
       setStage(lead.stage || 'new_lead')
       setSource(lead.source || 'other')
       setValue(lead.value ? String(lead.value / 100) : '')
@@ -151,10 +155,12 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
       company !== (lead.company || '') ||
       contactName !== (lead.contactName || '') ||
       contactEmail !== (lead.contactEmail || '') ||
+      website !== (lead.website || '') ||
+      address !== (lead.address || '') ||
       description !== (lead.description || '') ||
       tagsChanged
     )
-  }, [company, contactName, contactEmail, description, tagsList, lead])
+  }, [company, contactName, contactEmail, website, address, description, tagsList, lead])
 
   if (!lead) return null
 
@@ -175,6 +181,8 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
     if (contactPhone !== (lead.contactPhone || '')) changes.contactPhone = contactPhone || undefined
     if (contactLinkedin !== (lead.contactLinkedin || '')) changes.contactLinkedin = contactLinkedin || undefined
     if (contactTitle !== (lead.contactTitle || '')) changes.contactTitle = contactTitle || undefined
+    if (website !== (lead.website || '')) changes.website = website || undefined
+    if (address !== (lead.address || '')) changes.address = address || undefined
     if (source !== lead.source) changes.source = source
     if (description !== (lead.description || '')) changes.description = description || undefined
     if (nextStep !== (lead.nextStep || '')) changes.nextStep = nextStep || undefined
@@ -267,39 +275,41 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
             <div className="space-y-5 min-w-0">
               {/* Contact Info */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Contact</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Contact</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" className="h-8 text-sm" />
-                  <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Title / Role" className="h-8 text-sm" />
-                  <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" type="email" className="h-8 text-sm" />
-                  <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="h-8 text-sm" />
-                  <Input value={contactLinkedin} onChange={(e) => setContactLinkedin(e.target.value)} placeholder="LinkedIn URL" className="col-span-2 h-8 text-sm" />
+                  <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" className="h-8 text-sm text-foreground" />
+                  <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Title / Role" className="h-8 text-sm text-foreground" />
+                  <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" type="email" className="h-8 text-sm text-foreground" />
+                  <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="h-8 text-sm text-foreground" />
+                  <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website URL" className="h-8 text-sm text-foreground" />
+                  <Input value={contactLinkedin} onChange={(e) => setContactLinkedin(e.target.value)} placeholder="LinkedIn URL" className="h-8 text-sm text-foreground" />
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className="col-span-2 h-8 text-sm text-foreground" />
                 </div>
               </div>
 
               {/* Description */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Description</label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="About this lead..." rows={2} className="resize-none" />
               </div>
 
               {/* Next Step */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Next Step</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Next Step</label>
                 <Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="e.g. Schedule discovery call" className="h-8 text-sm" />
               </div>
 
               {/* Lost Reason */}
               {stage === 'lost' && (
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Lost Reason</label>
+                  <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Lost Reason</label>
                   <Input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Why was this lead lost?" className="h-8 text-sm" />
                 </div>
               )}
 
               {/* Activity Timeline */}
               <div className="space-y-3 border-t pt-4">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Activity</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Activity</label>
 
                 {/* Add activity form */}
                 <div className="flex gap-2 items-center">
@@ -340,14 +350,14 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
                           <div key={activity._id} className="relative flex items-start gap-3 py-1.5">
                             {/* Timeline dot */}
                             <div className="absolute -left-5 top-2.5 w-[7px] h-[7px] rounded-full bg-border ring-2 ring-background" />
-                            <Icon className="w-3.5 h-3.5 mt-0.5 text-muted-foreground/60 shrink-0" />
+                            <Icon className="w-3.5 h-3.5 mt-0.5 text-foreground/50 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium leading-tight">{activity.title}</p>
                               {activity.description && (
-                                <p className="text-xs text-muted-foreground/70 mt-0.5">{activity.description}</p>
+                                <p className="text-xs text-foreground/70 mt-0.5">{activity.description}</p>
                               )}
                               <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] text-muted-foreground/60">
+                                <span className="text-[10px] text-foreground/50">
                                   {new Date(activity.timestamp).toLocaleString()}
                                 </span>
                                 {actAgent && (
@@ -361,7 +371,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
                         )
                       })}
                       {activities?.length === 0 && (
-                        <p className="text-xs italic text-muted-foreground/50 text-center py-4">No activities yet</p>
+                        <p className="text-xs italic text-foreground/40 text-center py-4">No activities yet</p>
                       )}
                     </div>
                   </div>
@@ -369,7 +379,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
               </div>
 
               {/* Metadata */}
-              <div className="text-xs text-muted-foreground/70 pt-3 border-t">
+              <div className="text-xs text-foreground/70 pt-3 border-t">
                 Created: {new Date(lead._creationTime).toLocaleString()}
                 {lead.closedAt && ` | Closed: ${new Date(lead.closedAt).toLocaleString()}`}
               </div>
@@ -379,7 +389,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
             <div className="space-y-5 border-l pl-6">
               {/* Stage pills (2-col grid) */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Stage</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Stage</label>
                 <div className="grid grid-cols-2 gap-1">
                   {STAGE_OPTIONS.map((opt) => (
                     <button
@@ -408,7 +418,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
 
               {/* Source */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Source</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Source</label>
                 <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -421,7 +431,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
 
               {/* Agent */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Agent</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Agent</label>
                 <Select value={assignedAgent} onValueChange={setAssignedAgent}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                   <SelectContent>
@@ -436,13 +446,13 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
 
               {/* Follow Up Date */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Follow Up</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Follow Up</label>
                 <Input type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} className="h-8" />
               </div>
 
               {/* Tags */}
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
+                <label className="text-[11px] font-medium text-foreground/60 uppercase tracking-wider">Tags</label>
                 {tagsList.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {tagsList.map((tag, i) => (
@@ -453,7 +463,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
                         {tag}
                         <button
                           onClick={() => removeTag(i)}
-                          className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                          className="text-foreground/40 hover:text-destructive transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -491,7 +501,7 @@ export function LeadDetailDialog({ lead, agents, orgId: _orgId, open, onOpenChan
           </Button>
           <div className="flex items-center gap-3">
             {hasUnsavedChanges && (
-              <span className="text-xs text-muted-foreground/60 animate-fade-in">
+              <span className="text-xs text-foreground/50 animate-fade-in">
                 Unsaved changes
               </span>
             )}

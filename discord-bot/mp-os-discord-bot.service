@@ -1,0 +1,25 @@
+[Unit]
+Description=MP-OS Discord Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openclaw
+Group=openclaw
+WorkingDirectory=/opt/mp-os-discord-bot
+ExecStart=/usr/local/bin/bun run src/index.ts
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+# Load env from file
+EnvironmentFile=/opt/mp-os-discord-bot/.env
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mp-os-discord-bot
+
+[Install]
+WantedBy=multi-user.target

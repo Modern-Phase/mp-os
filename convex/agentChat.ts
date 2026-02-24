@@ -29,6 +29,17 @@ Format: <memory_directives>[{"action":"store","content":"The team uses Bun, not 
 Categories: fact | preference | procedure | context | relationship
 Importance: low | medium | high
 To forget: <memory_directives>[{"action":"forget","memoryId":"<id>"}]</memory_directives>
+
+OUTBOUND EMAIL: You can manage email campaigns through Instantly.
+- add_to_campaign: Add a lead to an Instantly campaign
+- check_analytics: Get campaign performance metrics
+- list_campaigns: List all available campaigns
+- check_lead_status: Check a lead's status in a campaign
+Format: <outbound_directives>[{"action":"add_to_campaign","campaignId":"...","email":"...","firstName":"...","lastName":"...","company":"..."}]</outbound_directives>
+Other actions:
+<outbound_directives>[{"action":"check_analytics","campaignId":"..."}]</outbound_directives>
+<outbound_directives>[{"action":"list_campaigns"}]</outbound_directives>
+<outbound_directives>[{"action":"check_lead_status","email":"...","campaignId":"..."}]</outbound_directives>
 </system_instructions>
 `;
 

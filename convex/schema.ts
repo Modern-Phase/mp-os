@@ -222,6 +222,30 @@ export const crmActivityTypeValidator = v.union(
 );
 export type CrmActivityType = Infer<typeof crmActivityTypeValidator>;
 
+// NOTIFICATION SYSTEM
+export const NOTIFICATION_TYPES = {
+  TASK_ASSIGNED: "task_assigned",
+  TASK_HANDOFF: "task_handoff",
+  TASK_COMPLETED: "task_completed",
+  AGENT_ERROR: "agent_error",
+  LEAD_STAGE_CHANGE: "lead_stage_change",
+  AGENT_MESSAGE: "agent_message",
+  EMAIL_REPLY: "email_reply",
+  EMAIL_BOUNCE: "email_bounce",
+} as const;
+
+export const notificationTypeValidator = v.union(
+  v.literal("task_assigned"),
+  v.literal("task_handoff"),
+  v.literal("task_completed"),
+  v.literal("agent_error"),
+  v.literal("lead_stage_change"),
+  v.literal("agent_message"),
+  v.literal("email_reply"),
+  v.literal("email_bounce"),
+);
+export type NotificationType = Infer<typeof notificationTypeValidator>;
+
 export const PROJECT_STATUSES = {
   PLANNING: "planning",
   IN_PROGRESS: "in_progress",
@@ -597,7 +621,8 @@ const schema = defineSchema({
     .index("agentId_status", ["agentId", "status"])
     .index("orgId_status", ["orgId", "status"])
     .index("assignedTo", ["assignedTo"])
-    .index("projectId", ["projectId"]),
+    .index("projectId", ["projectId"])
+    .index("handoffTo", ["handoffTo"]),
 
   // Agent projects (Modern Phase client work)
   agentProjects: defineTable({
@@ -715,6 +740,7 @@ const schema = defineSchema({
     ),
     processedTaskDirectives: v.optional(v.number()), // Count of tasks created from this message
     processedMemoryDirectives: v.optional(v.number()), // Count of memories stored from this message
+    processedOutboundDirectives: v.optional(v.number()), // Count of outbound email actions from this message
   })
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])
@@ -819,6 +845,22 @@ const schema = defineSchema({
     .index("agentId", ["agentId"])
     .index("orgId_timestamp", ["orgId", "timestamp"]),
 
+  // Notifications
+  notifications: defineTable({
+    userId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
+    type: notificationTypeValidator,
+    title: v.string(),
+    body: v.string(),
+    read: v.boolean(),
+    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"))),
+    resourceId: v.optional(v.string()),
+    agentId: v.optional(agentIdValidator),
+    createdAt: v.number(),
+  })
+    .index("userId_read", ["userId", "read"])
+    .index("userId_createdAt", ["userId", "createdAt"]),
+
   // Project templates (for deal-to-delivery pipeline)
   projectTemplates: defineTable({
     orgId: v.optional(v.id("organizations")),
@@ -848,6 +890,8 @@ const schema = defineSchema({
     contactPhone: v.optional(v.string()),
     contactLinkedin: v.optional(v.string()),
     contactTitle: v.optional(v.string()),
+    website: v.optional(v.string()),
+    address: v.optional(v.string()),
     stage: pipelineStageValidator,
     source: leadSourceValidator,
     value: v.optional(v.number()),
@@ -865,7 +909,8 @@ const schema = defineSchema({
     .index("orgId", ["orgId"])
     .index("orgId_stage", ["orgId", "stage"])
     .index("orgId_assignedAgent", ["orgId", "assignedAgent"])
-    .index("orgId_source", ["orgId", "source"]),
+    .index("orgId_source", ["orgId", "source"])
+    .index("orgId_contactEmail", ["orgId", "contactEmail"]),
 
   // CRM - Activity timeline per lead
   crmActivities: defineTable({
@@ -882,6 +927,59 @@ const schema = defineSchema({
     .index("leadId", ["leadId"])
     .index("orgId", ["orgId"])
     .index("leadId_timestamp", ["leadId", "timestamp"]),
+
+  // Outbound email events (raw webhook log from Instantly)
+  outboundEmailEvents: defineTable({
+    orgId: v.id("organizations"),
+    eventType: v.string(),
+    leadEmail: v.string(),
+    subject: v.optional(v.string()),
+    campaignId: v.string(),
+    campaignName: v.optional(v.string()),
+    externalEventId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    leadId: v.optional(v.id("crmLeads")),
+    activityId: v.optional(v.id("crmActivities")),
+    processedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_leadEmail", ["orgId", "leadEmail"])
+    .index("externalEventId", ["externalEventId"])
+    .index("orgId_eventType", ["orgId", "eventType"]),
+
+  // Discord integration — user account linking
+  discordLinks: defineTable({
+    userId: v.id("users"),
+    discordUserId: v.string(),
+    discordUsername: v.string(),
+    guildId: v.string(),
+    linkedAt: v.number(),
+  })
+    .index("discordUserId", ["discordUserId"])
+    .index("userId", ["userId"]),
+
+  // Discord integration — channel-to-department mapping
+  discordChannelMap: defineTable({
+    orgId: v.id("organizations"),
+    channelId: v.string(),
+    channelName: v.string(),
+    department: v.string(),
+    defaultAgentId: agentIdValidator,
+    isActive: v.boolean(),
+  })
+    .index("orgId", ["orgId"])
+    .index("channelId", ["channelId"]),
+
+  // Discord link codes — temporary codes for account linking
+  discordLinkCodes: defineTable({
+    userId: v.id("users"),
+    code: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("userId", ["userId"])
+    .index("code", ["code"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({
