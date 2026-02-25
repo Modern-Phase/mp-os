@@ -81,25 +81,6 @@ export default function BillingSettings() {
 
   return (
     <div className="flex h-full w-full flex-col gap-6">
-      <div className="flex w-full flex-col gap-2 p-6 py-2">
-        <h2 className="text-xl font-medium text-primary">
-          This is a demo app.
-        </h2>
-        <p className="text-sm font-normal text-primary/60">
-          This is a demo app that uses Stripe test environment. You can find a
-          list of test card numbers on the{" "}
-          <a
-            href="https://stripe.com/docs/testing#cards"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-primary/80 underline"
-          >
-            Stripe docs
-          </a>
-          .
-        </p>
-      </div>
-
       {/* Plans */}
       <div className="flex w-full flex-col items-start rounded-lg border border-border bg-card">
         <div className="flex flex-col gap-2 p-6">

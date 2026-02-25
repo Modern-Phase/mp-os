@@ -4,16 +4,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
 import { api } from '~/convex/_generated/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AgentChat } from '@/components/agents/AgentChat'
 import { AgentCard } from '@/components/agents/AgentCard'
 import { Id } from '~/convex/_generated/dataModel'
 
+type AgentChatSearch = {
+  agentId?: string
+}
+
 export const Route = createFileRoute('/_app/_auth/dashboard/_layout/agent-chat')({
   component: AgentChatPage,
+  validateSearch: (search: Record<string, unknown>): AgentChatSearch => ({
+    agentId: typeof search.agentId === 'string' ? search.agentId : undefined,
+  }),
 })
 
 function AgentChatPage() {
+  const { agentId: searchAgentId } = Route.useSearch()
   const currentUser = useQuery(api.app.getCurrentUser)
 
   // Derive orgId from first membership
@@ -25,6 +33,14 @@ function AgentChatPage() {
   )
 
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
+
+  // Auto-select agent from URL search param (e.g. from notification click)
+  useEffect(() => {
+    if (searchAgentId && agents && !selectedAgent) {
+      const match = agents.find((a: any) => a.agentId === searchAgentId)
+      if (match) setSelectedAgent(match)
+    }
+  }, [searchAgentId, agents, selectedAgent])
 
   if (!currentUser || !orgId || !agents) {
     return <div className="p-8">Loading...</div>

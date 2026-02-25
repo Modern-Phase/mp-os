@@ -2,7 +2,7 @@
 // CRM — Lead Pipeline & Deal Tracking
 
 import { useState, useEffect } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery as useConvexQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Loader2, Plus, Kanban, Table2, Database, BarChart3 } from 'lucide-react'
+import { Loader2, Plus, Kanban, Table2, BarChart3 } from 'lucide-react'
 import { PipelineBoard } from '@/components/crm/PipelineBoard'
 import { LeadsTable } from '@/components/crm/LeadsTable'
 import { LeadDetailDialog } from '@/components/crm/LeadDetailDialog'
@@ -32,8 +32,15 @@ import { CrmAnalytics } from '@/components/crm/CrmAnalytics'
 import { CsvImportDialog } from '@/components/crm/CsvImportDialog'
 import siteConfig from '~/site.config'
 
+type CrmSearch = {
+  leadId?: string
+}
+
 export const Route = createFileRoute('/_app/_auth/dashboard/_layout/crm')({
   component: CrmPage,
+  validateSearch: (search: Record<string, unknown>): CrmSearch => ({
+    leadId: typeof search.leadId === 'string' ? search.leadId : undefined,
+  }),
   beforeLoad: () => ({
     title: `${siteConfig.siteTitle} - CRM`,
   }),
@@ -49,6 +56,8 @@ const SOURCE_OPTIONS: { value: LeadSource; label: string }[] = [
 ]
 
 function CrmPage() {
+  const { leadId: searchLeadId } = Route.useSearch()
+  const navigate = useNavigate()
   const currentUser = useConvexQuery(api.app.getCurrentUser)
   const orgId = currentUser?.memberships?.[0]?.orgId as Id<'organizations'> | undefined
 
@@ -72,11 +81,9 @@ function CrmPage() {
   }, [orgId, seedTemplates])
 
   const createLead = useMutation(api.crm.createLead)
-  const seedCrmData = useMutation(api.crmSeed.seedCrmData)
 
   const [activeView, setActiveView] = useState('pipeline')
   const [addLeadOpen, setAddLeadOpen] = useState(false)
-  const [isSeeding, setIsSeeding] = useState(false)
   const [newLead, setNewLead] = useState({
     company: '',
     contactName: '',
@@ -86,8 +93,19 @@ function CrmPage() {
     assignedAgent: '',
   })
 
-  // For table view → detail dialog
+  // For table view → detail dialog (or URL-driven via ?leadId=)
   const [selectedLead, setSelectedLead] = useState<any | null>(null)
+
+  // Auto-open lead detail from URL search param (e.g. from notification click)
+  const searchLead = useConvexQuery(
+    api.crm.getLead,
+    searchLeadId ? { leadId: searchLeadId as Id<'crmLeads'> } : 'skip',
+  )
+  useEffect(() => {
+    if (searchLead) {
+      setSelectedLead(searchLead)
+    }
+  }, [searchLead])
 
   const handleCreateLead = async () => {
     if (!orgId || !newLead.company.trim() || !newLead.contactName.trim()) return
@@ -139,31 +157,6 @@ function CrmPage() {
         </div>
 
         <div className="flex items-center gap-2">
-        {totalLeads === 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isSeeding || !orgId}
-            onClick={async () => {
-              if (!orgId) return
-              setIsSeeding(true)
-              try {
-                await seedCrmData({ orgId })
-              } catch (err) {
-                console.error('Failed to seed CRM data:', err)
-              } finally {
-                setIsSeeding(false)
-              }
-            }}
-          >
-            {isSeeding ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Database className="w-4 h-4 mr-2" />
-            )}
-            Load Demo Data
-          </Button>
-        )}
         {orgId && <CsvImportDialog orgId={orgId} agents={agents || []} />}
         <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
           <DialogTrigger asChild>
@@ -293,7 +286,14 @@ function CrmPage() {
           agents={agents || []}
           orgId={orgId}
           open={!!selectedLead}
-          onOpenChange={(open) => { if (!open) setSelectedLead(null) }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedLead(null)
+              if (searchLeadId) {
+                navigate({ search: {} })
+              }
+            }
+          }}
         />
       )}
     </div>

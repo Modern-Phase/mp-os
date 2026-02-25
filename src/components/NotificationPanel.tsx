@@ -1,6 +1,8 @@
 // src/components/NotificationPanel.tsx — Bell dropdown with notification list
 
+import { useState } from 'react'
 import { useQuery as useConvexQuery, useMutation } from 'convex/react'
+import { useNavigate } from '@tanstack/react-router'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
 import { NotificationType } from '~/convex/schema'
@@ -19,6 +21,8 @@ import {
   AlertCircle,
   TrendingUp,
   MessageSquare,
+  Mail,
+  MailX,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
 
@@ -29,6 +33,8 @@ const TYPE_ICONS: Record<NotificationType, typeof Bell> = {
   agent_error: AlertCircle,
   lead_stage_change: TrendingUp,
   agent_message: MessageSquare,
+  email_reply: Mail,
+  email_bounce: MailX,
 }
 
 const TYPE_COLORS: Record<NotificationType, string> = {
@@ -38,6 +44,24 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   agent_error: 'text-red-500',
   lead_stage_change: 'text-amber-500',
   agent_message: 'text-sky-500',
+  email_reply: 'text-emerald-500',
+  email_bounce: 'text-orange-500',
+}
+
+function getNotificationRoute(n: any): { to: string; search?: Record<string, string> } {
+  switch (n.resourceType) {
+    case 'lead':
+      return n.resourceId
+        ? { to: '/dashboard/crm', search: { leadId: n.resourceId } }
+        : { to: '/dashboard/crm' }
+    case 'message':
+      return n.agentId
+        ? { to: '/dashboard/agent-chat', search: { agentId: n.agentId } }
+        : { to: '/dashboard/agent-chat' }
+    case 'task':
+    default:
+      return { to: '/dashboard' }
+  }
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -57,9 +81,11 @@ export function NotificationPanel() {
   const notifications = useConvexQuery(api.notifications.getNotifications, { limit: 50 })
   const markAsRead = useMutation(api.notifications.markAsRead)
   const markAllRead = useMutation(api.notifications.markAllRead)
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-8 w-8">
           <Bell className="h-4 w-4" />
@@ -108,6 +134,9 @@ export function NotificationPanel() {
                       if (!n.read) {
                         markAsRead({ notificationId: n._id as Id<'notifications'> })
                       }
+                      const route = getNotificationRoute(n)
+                      navigate({ to: route.to, search: route.search ?? {} })
+                      setOpen(false)
                     }}
                     className={cn(
                       'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
