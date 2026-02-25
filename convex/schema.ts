@@ -574,8 +574,10 @@ const schema = defineSchema({
   // ========== AGENT SYSTEM (Mission Control) ==========
   
   // Agent definitions and configuration
+  // agentId can be a known agent (from AGENT_IDS) or a custom string for user-created agents
   agents: defineTable({
-    agentId: agentIdValidator,
+    agentId: v.string(),
+    orgId: v.optional(v.id("organizations")), // null for global/hardcoded agents
     name: v.string(),
     role: v.string(),
     emoji: v.string(),
@@ -585,15 +587,18 @@ const schema = defineSchema({
       v.literal("ops"),
       v.literal("finance"),
       v.literal("delivery"),
+      v.literal("custom"),
     ),
     description: v.string(),
     expertise: v.array(v.string()),
     isActive: v.boolean(),
     soulPath: v.string(), // Path to SOUL.md
+    isCustom: v.optional(v.boolean()), // true for user-created agents
     collectionIds: v.optional(v.array(v.id("documentCollections"))), // RAG access (empty = all org collections)
   })
     .index("agentId", ["agentId"])
-    .index("department", ["department"]),
+    .index("department", ["department"])
+    .index("orgId", ["orgId"]),
 
   // Tasks assigned to agents
   agentTasks: defineTable({
@@ -980,6 +985,58 @@ const schema = defineSchema({
   })
     .index("userId", ["userId"])
     .index("code", ["code"]),
+
+  // Agent tool calls (captured from gateway or self-reported via directives)
+  agentToolCalls: defineTable({
+    orgId: v.id("organizations"),
+    agentId: v.string(),
+    runId: v.string(),
+    sessionId: v.optional(v.string()),
+    messageId: v.optional(v.id("agentChatMessages")),
+    toolName: v.string(),
+    toolInput: v.string(), // JSON string
+    toolResult: v.optional(v.string()), // JSON string
+    status: v.union(v.literal("pending"), v.literal("success"), v.literal("error")),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    duration: v.optional(v.number()), // ms
+  })
+    .index("orgId", ["orgId"])
+    .index("agentId", ["agentId"])
+    .index("runId", ["runId"])
+    .index("messageId", ["messageId"]),
+
+  // Synced workspace files from agent VPS
+  agentFiles: defineTable({
+    orgId: v.id("organizations"),
+    agentId: v.string(),
+    path: v.string(), // relative to workspace root
+    filename: v.string(),
+    content: v.optional(v.string()), // text content (capped at 1MB)
+    storageId: v.optional(v.id("_storage")), // for binary/large files
+    mimeType: v.string(),
+    sizeBytes: v.number(),
+    lastModifiedAt: v.number(),
+    syncedAt: v.number(),
+  })
+    .index("agentId", ["agentId"])
+    .index("orgId_agentId", ["orgId", "agentId"])
+    .index("path", ["path"]),
+
+  // Full session transcripts synced from VPS
+  agentSessionTranscripts: defineTable({
+    orgId: v.id("organizations"),
+    agentId: v.string(),
+    sessionId: v.string(),
+    messages: v.string(), // JSON array of {role, content, timestamp, toolCalls?}
+    messageCount: v.number(),
+    startedAt: v.number(),
+    lastActivityAt: v.number(),
+    syncedAt: v.number(),
+  })
+    .index("agentId", ["agentId"])
+    .index("sessionId", ["sessionId"])
+    .index("orgId_agentId", ["orgId", "agentId"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

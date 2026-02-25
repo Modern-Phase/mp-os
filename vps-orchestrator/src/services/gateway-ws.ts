@@ -358,7 +358,7 @@ async function handleEvent(frame: { event: string; data?: any; payload?: any }):
       bufferDelta(runId, textContent, callbackInfo);
       break;
 
-    case "final":
+    case "final": {
       console.log(`[gateway-ws] Chat final runId=${runId}: "${textContent.slice(0, 80)}"`);
       // Await delta flush so the last delta webhook completes before final arrives
       await flushDelta(runId);
@@ -375,7 +375,27 @@ async function handleEvent(frame: { event: string; data?: any; payload?: any }):
       }).catch((err) =>
         console.error(`[gateway-ws] Failed to send final webhook for runId=${runId}:`, err),
       );
+
+      // Forward tool calls if present
+      const toolCalls = extractToolCalls(message);
+      if (toolCalls.length > 0) {
+        console.log(`[gateway-ws] Sending ${toolCalls.length} tool call(s) for runId=${runId}`);
+        for (const tc of toolCalls) {
+          sendWebhook({
+            agentId: callbackInfo.agentId,
+            orgId: callbackInfo.orgId,
+            messageId: callbackInfo.messageId,
+            content: "", // not used for tool calls
+            state: "tool_call" as any,
+            runId,
+            toolCall: tc,
+          }).catch((err) =>
+            console.error(`[gateway-ws] Failed to send tool call webhook:`, err),
+          );
+        }
+      }
       break;
+    }
 
     case "aborted":
       await flushDelta(runId);
@@ -427,6 +447,37 @@ function extractTextContent(message: any): string {
   if (typeof message.content === "string") return message.content;
   if (typeof message.text === "string") return message.text;
   return "";
+}
+
+export interface ToolCallEvent {
+  toolName: string;
+  toolInput: string; // JSON string
+  toolResult?: string; // JSON string
+  state: "started" | "completed";
+}
+
+/**
+ * Extract tool_use and tool_result content blocks from a gateway message.
+ * OpenClaw format: { content: [{ type: "tool_use", id, name, input }, { type: "tool_result", tool_use_id, content }] }
+ */
+function extractToolCalls(message: any): ToolCallEvent[] {
+  if (!message || !Array.isArray(message.content)) return [];
+
+  const toolCalls: ToolCallEvent[] = [];
+  const toolUseBlocks = message.content.filter((p: any) => p.type === "tool_use");
+  const toolResultBlocks = message.content.filter((p: any) => p.type === "tool_result");
+
+  for (const block of toolUseBlocks) {
+    const result = toolResultBlocks.find((r: any) => r.tool_use_id === block.id);
+    toolCalls.push({
+      toolName: block.name || "unknown",
+      toolInput: JSON.stringify(block.input || {}),
+      toolResult: result ? JSON.stringify(result.content || result.output || "") : undefined,
+      state: result ? "completed" : "started",
+    });
+  }
+
+  return toolCalls;
 }
 
 function bufferDelta(runId: string, content: string, callbackInfo: CallbackInfo): void {

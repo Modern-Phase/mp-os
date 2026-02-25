@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { validateAgentId } from "../config";
-import { scanWorkspaceForTasks, archiveTaskFile, scanWorkspaceForMemory } from "../services/filesystem";
+import { scanWorkspaceForTasks, archiveTaskFile, scanWorkspaceForMemory, listWorkspaceFiles } from "../services/filesystem";
 
 const app = new Hono();
 
@@ -63,6 +63,24 @@ app.get("/instances/:id/workspace/memory", async (c) => {
   } catch (error) {
     return c.json(
       { error: error instanceof Error ? error.message : "Failed to scan memory" },
+      500,
+    );
+  }
+});
+
+// List all workspace files for sync to Convex
+app.get("/instances/:id/workspace/files", async (c) => {
+  const { id } = c.req.param();
+  if (!validateAgentId(id)) {
+    return c.json({ error: "Invalid agent ID" }, 400);
+  }
+
+  try {
+    const files = await listWorkspaceFiles(id);
+    return c.json({ agentId: id, files, count: files.length });
+  } catch (error) {
+    return c.json(
+      { error: error instanceof Error ? error.message : "Failed to list workspace files" },
       500,
     );
   }

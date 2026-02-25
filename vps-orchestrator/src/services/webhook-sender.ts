@@ -3,13 +3,21 @@
 
 import { CONFIG } from "../config";
 
+export interface ToolCallPayload {
+  toolName: string;
+  toolInput: string;
+  toolResult?: string;
+  state: "started" | "completed";
+}
+
 export interface WebhookPayload {
   agentId: string;
   orgId: string;
   messageId: string;
   content: string;
-  state: "delta" | "final" | "error";
+  state: "delta" | "final" | "error" | "tool_call";
   runId: string;
+  toolCall?: ToolCallPayload;
 }
 
 const MAX_RETRIES = 3;
@@ -44,7 +52,10 @@ export async function sendWebhook(payload: WebhookPayload): Promise<void> {
     return;
   }
 
-  const url = `${CONFIG.convexSiteUrl}/webhooks/agent-response`;
+  const endpoint = payload.state === "tool_call"
+    ? "/webhooks/agent-tool-call"
+    : "/webhooks/agent-response";
+  const url = `${CONFIG.convexSiteUrl}${endpoint}`;
   const body = JSON.stringify(payload);
 
   let signature = "";

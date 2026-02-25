@@ -236,6 +236,71 @@ export async function scanWorkspaceForMemory(
 }
 
 /**
+ * List all workspace files for an agent (text files with content, metadata for binary).
+ * Used by Convex agentSync to pull workspace state into the database.
+ */
+export async function listWorkspaceFiles(
+  agentId: string,
+): Promise<{ path: string; filename: string; content: string; mimeType: string; sizeBytes: number; lastModifiedAt: number }[]> {
+  const agentDir = getAgentDir(agentId);
+  const results: { path: string; filename: string; content: string; mimeType: string; sizeBytes: number; lastModifiedAt: number }[] = [];
+
+  async function walkDir(dir: string, relPrefix: string) {
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        const relPath = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory()) {
+          // Skip non-relevant directories
+          if (["sessions", ".git", "node_modules", ".cache", ".local"].includes(entry.name)) continue;
+          await walkDir(fullPath, relPath);
+        } else if (entry.isFile()) {
+          try {
+            const fileStat = await stat(fullPath);
+            // Skip very large files (> 1MB)
+            if (fileStat.size > 1_000_000) continue;
+
+            const content = await readFile(fullPath, "utf-8");
+            const ext = entry.name.split(".").pop()?.toLowerCase() || "";
+            const mimeMap: Record<string, string> = {
+              md: "text/markdown",
+              txt: "text/plain",
+              json: "application/json",
+              ts: "text/typescript",
+              js: "text/javascript",
+              py: "text/x-python",
+              yaml: "text/yaml",
+              yml: "text/yaml",
+              toml: "text/toml",
+              csv: "text/csv",
+              sh: "text/x-shellscript",
+            };
+
+            results.push({
+              path: relPath,
+              filename: entry.name,
+              content,
+              mimeType: mimeMap[ext] || "text/plain",
+              sizeBytes: fileStat.size,
+              lastModifiedAt: fileStat.mtime.getTime(),
+            });
+          } catch {
+            // Skip unreadable files (binary etc.)
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+  }
+
+  await walkDir(agentDir, "");
+  return results;
+}
+
+/**
  * Delete or archive a processed task file from an agent's workspace.
  */
 export async function archiveTaskFile(

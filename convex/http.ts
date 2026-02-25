@@ -839,6 +839,110 @@ http.route({
   }),
 });
 
+// Agent tool call webhook from VPS Orchestrator
+http.route({
+  path: "/webhooks/agent-tool-call",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Webhook-Signature",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/agent-tool-call",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.text();
+      const signature = request.headers.get("X-Webhook-Signature") || "";
+
+      // Verify HMAC signature if configured
+      if (WEBHOOK_SECRET) {
+        const match = signature.match(/^t=(\d+),s=([a-f0-9]+)$/);
+        if (!match) {
+          return new Response(JSON.stringify({ error: "Missing or invalid signature" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const [, timestamp, sig] = match;
+        const age = Date.now() - parseInt(timestamp);
+        if (age > 5 * 60 * 1000 || age < -60_000) {
+          return new Response(JSON.stringify({ error: "Signature expired" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const key = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(WEBHOOK_SECRET),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"],
+        );
+        const expected = await crypto.subtle.sign(
+          "HMAC",
+          key,
+          new TextEncoder().encode(`${timestamp}.${body}`),
+        );
+        const expectedHex = Array.from(new Uint8Array(expected))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+        if (sig !== expectedHex) {
+          return new Response(JSON.stringify({ error: "Invalid signature" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      const payload = JSON.parse(body);
+      const { agentId, orgId, messageId, runId, toolCall } = payload;
+
+      if (!agentId || !runId || !toolCall) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: agentId, runId, toolCall" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      await ctx.runMutation(internal.agentChatWebhook.receiveToolCall, {
+        agentId,
+        orgId: orgId || "",
+        messageId: messageId || "",
+        runId,
+        toolName: toolCall.toolName || "unknown",
+        toolInput: toolCall.toolInput || "{}",
+        toolResult: toolCall.toolResult,
+        state: toolCall.state || "completed",
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[Tool Call Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
 // Discord bot webhook — receives messages from the Discord bot service
 http.route({
   path: "/webhooks/discord-message",

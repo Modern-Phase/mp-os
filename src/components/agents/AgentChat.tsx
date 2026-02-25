@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import type { Citation } from "@/components/chat/ChatMessage";
+import { ToolCallDisplay } from "@/components/agents/ToolCallDisplay";
 
 const ACCEPTED_FILE_TYPES = ".csv,.txt,.md,.json,.tsv";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -370,6 +371,13 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                         {msg.processedTaskDirectives} task{msg.processedTaskDirectives > 1 ? "s" : ""} created
                       </Badge>
                     </div>
+                  )}
+                  {/* Tool calls display for agent messages */}
+                  {msg.role === "agent" && (
+                    <ToolCallDisplay
+                      messageId={msg._id}
+                      runId={msg.runId}
+                    />
                   )}
                   {isFailed && (
                     <div className="flex justify-end mt-1">

@@ -5,8 +5,16 @@ import { Id } from "~/convex/_generated/dataModel"
 import { Card, CardContent } from "@/ui/card"
 import { Badge } from "@/ui/badge"
 import { Button } from "@/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/ui/dialog"
 import { cn } from "@/utils/misc"
-import { Play, Square, RotateCcw, Loader2 } from "lucide-react"
+import { Play, Square, RotateCcw, Loader2, Trash2 } from "lucide-react"
 
 interface VpsInstance {
   agentId: string
@@ -48,7 +56,10 @@ export function InstanceCard({
   orgId,
 }: InstanceCardProps) {
   const controlInstance = useAction(api.vpsOrchestrator.controlInstance)
+  const deleteInstance = useAction(api.vpsOrchestrator.deleteInstance)
   const [loading, setLoading] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const healthScore = useConvexQuery(
     api.agentHealth.getAgentHealthScore,
@@ -88,6 +99,19 @@ export function InstanceCard({
       console.error(`Failed to ${command}:`, err)
     } finally {
       setLoading(null)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await deleteInstance({ instanceId: agent.agentId, orgId: orgId ? String(orgId) : undefined })
+      onRefresh?.()
+      setShowDeleteDialog(false)
+    } catch (err) {
+      console.error("Failed to delete instance:", err)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -206,7 +230,51 @@ export function InstanceCard({
               </Button>
             </>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-[10px] gap-1 text-red-500 hover:text-red-600 ml-auto"
+            disabled={!!loading || isRunning}
+            onClick={() => setShowDeleteDialog(true)}
+            title={isRunning ? "Stop the agent before deleting" : "Delete instance"}
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete {agent.name}?</DialogTitle>
+              <DialogDescription>
+                This will remove the agent instance and all VPS data. Sessions, chat history,
+                and workspace files on the server will be permanently deleted. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )

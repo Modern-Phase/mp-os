@@ -748,6 +748,30 @@ export const INTERNAL_createDocumentFromAttachment = internalMutation({
   },
 });
 
+// ========== TOOL CALL QUERIES ==========
+
+export const getToolCallsByRunId = query({
+  args: { runId: v.string() },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentToolCalls")
+      .withIndex("runId", (q) => q.eq("runId", args.runId))
+      .collect();
+  },
+});
+
+export const getToolCallsByMessageId = query({
+  args: { messageId: v.id("agentChatMessages") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentToolCalls")
+      .withIndex("messageId", (q) => q.eq("messageId", args.messageId))
+      .collect();
+  },
+});
+
 // Helper to get auth user
 async function getAuthUserId(ctx: any): Promise<any | null> {
   const identity = await ctx.auth.getUserIdentity();

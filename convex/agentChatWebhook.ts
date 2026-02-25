@@ -2,7 +2,7 @@
 // Handles webhook callbacks from VPS Orchestrator with agent response streaming
 
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
@@ -130,6 +130,141 @@ function parseMemoryDirectives(content: string): {
   return { directives, cleanContent: cleanContent.trim() };
 }
 
+// ── Tool Call Report Directive Parsing ──
+// Agents can include <tool_call_report>[...]</tool_call_report> in their responses
+// to self-report tool calls made during execution.
+
+interface ToolCallReport {
+  tool: string;
+  input: any;
+  result?: any;
+  error?: string;
+  duration?: number;
+}
+
+function parseToolCallDirectives(content: string): {
+  reports: ToolCallReport[];
+  cleanContent: string;
+} {
+  const regex = /<tool_call_report>([\s\S]*?)<\/tool_call_report>/g;
+  const reports: ToolCallReport[] = [];
+  let cleanContent = content;
+
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      for (const d of arr) {
+        if (d.tool && typeof d.tool === "string") {
+          reports.push(d as ToolCallReport);
+        }
+      }
+    } catch {
+      console.warn("[webhook] Failed to parse tool_call_report JSON");
+    }
+    cleanContent = cleanContent.replace(match[0], "");
+  }
+
+  return { reports, cleanContent: cleanContent.trim() };
+}
+
+/**
+ * Receive a tool call event from the VPS Orchestrator gateway.
+ * Called by the HTTP handler in http.ts.
+ */
+export const receiveToolCall = internalMutation({
+  args: {
+    agentId: v.string(),
+    orgId: v.string(),
+    messageId: v.string(),
+    runId: v.string(),
+    toolName: v.string(),
+    toolInput: v.string(),
+    toolResult: v.optional(v.string()),
+    state: v.union(v.literal("started"), v.literal("completed")),
+  },
+  handler: async (ctx, args) => {
+    const orgId = ctx.db.normalizeId("organizations", args.orgId);
+    if (!orgId) return;
+
+    // Resolve messageId to link tool call to the agent message
+    let messageId: Id<"agentChatMessages"> | undefined;
+    if (args.messageId) {
+      // Find the agent response message by runId (not the original user msg)
+      const agentMsg = await ctx.db
+        .query("agentChatMessages")
+        .withIndex("runId", (q) => q.eq("runId", args.runId))
+        .first();
+      if (agentMsg) messageId = agentMsg._id;
+    }
+
+    if (args.state === "started") {
+      await ctx.db.insert("agentToolCalls", {
+        orgId,
+        agentId: args.agentId,
+        runId: args.runId,
+        messageId,
+        toolName: args.toolName,
+        toolInput: args.toolInput,
+        status: "pending",
+        startedAt: Date.now(),
+      });
+    } else {
+      // Find existing pending tool call for this run + tool name
+      const existing = await ctx.db
+        .query("agentToolCalls")
+        .withIndex("runId", (q) => q.eq("runId", args.runId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("toolName"), args.toolName),
+            q.eq(q.field("status"), "pending"),
+          ),
+        )
+        .first();
+
+      if (existing) {
+        const duration = Date.now() - existing.startedAt;
+        await ctx.db.patch(existing._id, {
+          toolResult: args.toolResult,
+          status: "success",
+          completedAt: Date.now(),
+          duration,
+          messageId: messageId || existing.messageId,
+        });
+      } else {
+        // No started event — insert completed directly
+        await ctx.db.insert("agentToolCalls", {
+          orgId,
+          agentId: args.agentId,
+          runId: args.runId,
+          messageId,
+          toolName: args.toolName,
+          toolInput: args.toolInput,
+          toolResult: args.toolResult,
+          status: "success",
+          startedAt: Date.now(),
+          completedAt: Date.now(),
+          duration: 0,
+        });
+      }
+    }
+  },
+});
+
+/**
+ * Query tool calls for a specific message
+ */
+export const getToolCallsForMessage = internalQuery({
+  args: { messageId: v.id("agentChatMessages") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentToolCalls")
+      .withIndex("messageId", (q) => q.eq("messageId", args.messageId))
+      .collect();
+  },
+});
+
 /**
  * Receive an agent response event from the VPS Orchestrator webhook.
  * Called by the HTTP handler in http.ts after HMAC verification.
@@ -215,7 +350,11 @@ export const receiveAgentResponse = internalMutation({
       // Parse memory directives from the outbound-cleaned content
       const { directives: memoryDirectives, cleanContent: memoryCleanContent } =
         parseMemoryDirectives(outboundCleanContent);
-      const displayContent = memoryCleanContent || outboundCleanContent || taskCleanContent || finalContent;
+
+      // Parse tool call report directives (self-reported by agents as fallback)
+      const { reports: toolCallReports, cleanContent: toolCleanContent } =
+        parseToolCallDirectives(memoryCleanContent);
+      const displayContent = toolCleanContent || memoryCleanContent || outboundCleanContent || taskCleanContent || finalContent;
 
       let agentMessageId: Id<"agentChatMessages"> | undefined;
 
@@ -379,6 +518,34 @@ export const receiveAgentResponse = internalMutation({
         }
       }
 
+      // ── Process Tool Call Reports (self-reported by agent) ──
+      if (toolCallReports.length > 0 && agentMessageId) {
+        const tcOriginalMsg = await getOriginalMessage();
+        const tcOrgId = tcOriginalMsg ? tcOriginalMsg.orgId : ctx.db.normalizeId("organizations", args.orgId);
+        if (tcOrgId) {
+          for (const report of toolCallReports) {
+            try {
+              await ctx.db.insert("agentToolCalls", {
+                orgId: tcOrgId,
+                agentId: args.agentId,
+                runId: args.runId,
+                messageId: agentMessageId,
+                toolName: report.tool,
+                toolInput: JSON.stringify(report.input || {}),
+                toolResult: report.result ? JSON.stringify(report.result) : undefined,
+                status: report.error ? "error" : "success",
+                startedAt: Date.now() - (report.duration || 0),
+                completedAt: Date.now(),
+                duration: report.duration,
+              });
+            } catch (err) {
+              console.error("[webhook] Failed to insert tool call report:", err);
+            }
+          }
+          console.log(`[webhook] Stored ${toolCallReports.length} tool call report(s) for ${args.agentId}`);
+        }
+      }
+
       // ── Process Outbound Directives ──
       if (outboundDirectives.length > 0) {
         for (const directive of outboundDirectives) {
@@ -465,6 +632,12 @@ export const receiveAgentResponse = internalMutation({
           orgId: String(scanOriginalMsg.orgId),
           userId: String(scanOriginalMsg.userId),
           messageId: args.messageId,
+        });
+
+        // Schedule full data sync (files + transcripts) after agent finishes
+        await ctx.scheduler.runAfter(5000, internal.agentSync.INTERNAL_syncAgentData, {
+          agentId: args.agentId,
+          orgId: String(scanOriginalMsg.orgId),
         });
       }
     } else if (args.state === "error") {

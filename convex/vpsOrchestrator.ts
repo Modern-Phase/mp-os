@@ -90,23 +90,46 @@ export const createInstance = action({
     gatewayPort: v.number(),
     soulContent: v.optional(v.string()),
     model: v.optional(v.string()),
+    orgId: v.optional(v.string()),
+    emoji: v.optional(v.string()),
+    role: v.optional(v.string()),
+    color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAuth(ctx);
 
     const response = await orchestratorFetch("/api/instances", {
       method: "POST",
-      body: JSON.stringify(args),
+      body: JSON.stringify({
+        id: args.id,
+        name: args.name,
+        gatewayPort: args.gatewayPort,
+        soulContent: args.soulContent,
+        model: args.model,
+      }),
     });
 
     const instance = await response.json();
     await ctx.runMutation(internal.vpsOrchestrator.syncInstance, { instance });
+
+    // Also register in the agents table so custom agents appear in chat sidebar
+    if (args.orgId) {
+      await ctx.runMutation(internal.vpsOrchestrator.registerCustomAgent, {
+        agentId: args.id,
+        orgId: args.orgId,
+        name: args.name,
+        emoji: args.emoji || "🤖",
+        role: args.role || "Custom Agent",
+        color: args.color || "#6366F1",
+      });
+    }
+
     return instance;
   },
 });
 
 export const deleteInstance = action({
-  args: { instanceId: v.string() },
+  args: { instanceId: v.string(), orgId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireAuth(ctx);
 
@@ -117,6 +140,14 @@ export const deleteInstance = action({
     await ctx.runMutation(internal.vpsOrchestrator.removeInstance, {
       agentId: args.instanceId,
     });
+
+    // Clean up related Convex data (agents table, sessions, queue items)
+    if (args.orgId) {
+      await ctx.runMutation(internal.vpsOrchestrator.cleanupAgentData, {
+        agentId: args.instanceId,
+        orgId: args.orgId,
+      });
+    }
 
     return { success: true };
   },
@@ -299,6 +330,98 @@ export const removeInstance = internalMutation({
 
     if (existing) {
       await ctx.db.delete(existing._id);
+    }
+  },
+});
+
+export const registerCustomAgent = internalMutation({
+  args: {
+    agentId: v.string(),
+    orgId: v.string(),
+    name: v.string(),
+    emoji: v.string(),
+    role: v.string(),
+    color: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if already exists
+    const existing = await ctx.db
+      .query("agents")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .first();
+
+    if (existing) {
+      // Reactivate if previously deleted
+      await ctx.db.patch(existing._id, { isActive: true });
+      return;
+    }
+
+    const orgId = ctx.db.normalizeId("organizations", args.orgId);
+    await ctx.db.insert("agents", {
+      agentId: args.agentId,
+      orgId: orgId || undefined,
+      name: args.name,
+      role: args.role,
+      emoji: args.emoji,
+      color: args.color,
+      department: "custom",
+      description: `Custom agent: ${args.name}`,
+      expertise: [],
+      isActive: true,
+      isCustom: true,
+      soulPath: `agents/${args.agentId}/SOUL.md`,
+    });
+  },
+});
+
+export const cleanupAgentData = internalMutation({
+  args: { agentId: v.string(), orgId: v.string() },
+  handler: async (ctx, args) => {
+    // Deactivate in agents table
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .first();
+    if (agent) {
+      await ctx.db.patch(agent._id, { isActive: false });
+    }
+
+    // Clean up chat queue items
+    const queueItems = await ctx.db
+      .query("agentChatQueue")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId as any))
+      .collect();
+    for (const item of queueItems) {
+      if (item.status === "queued" || item.status === "processing") {
+        await ctx.db.patch(item._id, { status: "failed", error: "Agent instance deleted" });
+      }
+    }
+
+    // Clean up agent sessions
+    const sessions = await ctx.db
+      .query("agentSessions")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId as any))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.patch(session._id, { status: "offline" });
+    }
+
+    // Clean up synced files
+    const files = await ctx.db
+      .query("agentFiles")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .collect();
+    for (const file of files) {
+      await ctx.db.delete(file._id);
+    }
+
+    // Clean up synced transcripts
+    const transcripts = await ctx.db
+      .query("agentSessionTranscripts")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .collect();
+    for (const t of transcripts) {
+      await ctx.db.delete(t._id);
     }
   },
 });

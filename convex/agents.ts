@@ -136,18 +136,51 @@ export const getAgentConfig = internalQuery({
 export const getAgents = query({
   args: { orgId: v.id("organizations") },
   returns: v.array(v.any()),
-  handler: async (_ctx, _args) => {
-    return Object.values(AGENT_DEFINITIONS);
+  handler: async (ctx, args) => {
+    const hardcoded = Object.values(AGENT_DEFINITIONS);
+
+    // Merge custom agents from DB (user-created instances)
+    const customAgents = await ctx.db
+      .query("agents")
+      .withIndex("orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+
+    const activeCustom = customAgents
+      .filter((a) => a.isCustom && a.isActive)
+      .map((a) => ({
+        agentId: a.agentId,
+        name: a.name,
+        role: a.role,
+        emoji: a.emoji,
+        color: a.color,
+        department: a.department,
+        description: a.description,
+        expertise: a.expertise,
+        isActive: a.isActive,
+        isCustom: true,
+        soulPath: a.soulPath,
+      }));
+
+    return [...hardcoded, ...activeCustom];
   },
 });
 
 export const getAgent = query({
   args: {
     orgId: v.id("organizations"),
-    agentId: agentIdValidator
+    agentId: v.string(),
   },
-  handler: async (_ctx, args) => {
-    return AGENT_DEFINITIONS[args.agentId];
+  handler: async (ctx, args) => {
+    // Check hardcoded agents first
+    const hardcoded = AGENT_DEFINITIONS[args.agentId as keyof typeof AGENT_DEFINITIONS];
+    if (hardcoded) return hardcoded;
+
+    // Check DB for custom agents
+    const custom = await ctx.db
+      .query("agents")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .first();
+    return custom || null;
   },
 });
 
