@@ -237,7 +237,7 @@ type Step = 'upload' | 'preview' | 'result'
 
 export function CsvImportDialog({
   orgId,
-  agents,
+  agents: _agents,
 }: {
   orgId: Id<'organizations'>
   agents: any[]
@@ -248,7 +248,7 @@ export function CsvImportDialog({
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>('upload')
   const [fileName, setFileName] = useState('')
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [_csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([])
   const [mappings, setMappings] = useState<ColumnMapping[]>([])
   const [validLeads, setValidLeads] = useState<ParsedLead[]>([])

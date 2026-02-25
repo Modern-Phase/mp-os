@@ -67,7 +67,7 @@ function AgentChatPage() {
       </aside>
 
       {/* Chat Area */}
-      <main className="flex-1 p-6">
+      <main className="flex-1 min-w-0 overflow-hidden">
         {selectedAgent ? (
           <AgentChat
             agent={selectedAgent}

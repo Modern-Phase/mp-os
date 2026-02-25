@@ -156,7 +156,7 @@ function ProjectsPage() {
   useEffect(() => {
     if (projects && projects.length > 0 && !searchProjectId) {
       navigate({
-        search: { projectId: projects[0]._id as string },
+        search: { projectId: projects[0]._id as string } as any,
         replace: true,
       })
     }
@@ -164,7 +164,7 @@ function ProjectsPage() {
 
   const setSelectedProjectId = (id: Id<'agentProjects'> | null) => {
     navigate({
-      search: id ? { projectId: id as string } : {},
+      search: (id ? { projectId: id as string } : {}) as any,
       replace: true,
     })
   }
@@ -985,7 +985,7 @@ function CrmLeadTab({ lead }: { lead: any }) {
 function EmptyState({
   projects,
   allTasks,
-  recentActivity,
+  recentActivity: _recentActivity,
   onCreateProject,
 }: {
   projects: any[]

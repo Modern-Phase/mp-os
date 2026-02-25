@@ -145,10 +145,10 @@ export function CrmAnalytics({ orgId, agents }: CrmAnalyticsProps) {
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number, _name: string, props: any) => [
-                    `${value} leads (${formatCurrency(props.payload.value)})`,
+                  formatter={((value: any, _name: any, props: any) => [
+                    `${value ?? 0} leads (${formatCurrency(props.payload.value)})`,
                     'Count',
-                  ]}
+                  ]) as any}
                   contentStyle={{ fontSize: 12 }}
                 />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>
@@ -188,10 +188,10 @@ export function CrmAnalytics({ orgId, agents }: CrmAnalyticsProps) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number, name: string) => [
-                      value,
+                    formatter={((value: any, name: any) => [
+                      value ?? 0,
                       formatSourceLabel(name),
-                    ]}
+                    ]) as any}
                     contentStyle={{ fontSize: 12 }}
                   />
                 </PieChart>
@@ -289,9 +289,9 @@ export function CrmAnalytics({ orgId, agents }: CrmAnalyticsProps) {
                   />
                   <YAxis hide />
                   <Tooltip
-                    formatter={(value: number) => [value, 'Count']}
-                    labelFormatter={(label: string) =>
-                      label.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                    formatter={((value: any) => [value ?? 0, 'Count']) as any}
+                    labelFormatter={(label: any) =>
+                      label.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
                     }
                     contentStyle={{ fontSize: 12 }}
                   />

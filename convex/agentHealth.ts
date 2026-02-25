@@ -67,7 +67,7 @@ export const getAgentOperationalHealth = query({
     orgId: v.id("organizations"),
     agentId: v.string(),
   },
-  handler: async (ctx, { orgId, agentId }) => {
+  handler: async (ctx, { orgId: _orgId, agentId }) => {
     // Queue items for success rate + latency + errors
     const queueItems = await ctx.db
       .query("agentChatQueue")
@@ -165,7 +165,7 @@ export const getAgentHealthScore = query({
     orgId: v.id("organizations"),
     agentId: v.string(),
   },
-  handler: async (ctx, { orgId, agentId }) => {
+  handler: async (ctx, { orgId: _orgId, agentId }) => {
     // Infrastructure score (50%)
     const instance = await ctx.db
       .query("vpsInstances")

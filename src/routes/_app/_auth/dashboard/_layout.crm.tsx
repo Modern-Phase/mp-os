@@ -290,7 +290,7 @@ function CrmPage() {
             if (!open) {
               setSelectedLead(null)
               if (searchLeadId) {
-                navigate({ search: {} })
+                navigate({ search: {} as any })
               }
             }
           }}
