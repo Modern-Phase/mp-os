@@ -21,6 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from '@/ui/dialog'
 import {
   Select,
@@ -40,6 +42,7 @@ import {
   CalendarDays,
   Bot,
   ExternalLink,
+  Trash2,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
 import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
@@ -281,6 +284,7 @@ function ProjectsPage() {
             projectId={selectedProjectId}
             agents={agents || []}
             orgId={orgId}
+            onDeleted={() => navigate({ search: {} as any, replace: true })}
           />
         ) : (
           <EmptyState
@@ -382,13 +386,31 @@ function ProjectDetail({
   projectId,
   agents,
   orgId,
+  onDeleted,
 }: {
   projectId: Id<'agentProjects'>
   agents: any[]
   orgId: Id<'organizations'> | undefined
+  onDeleted?: () => void
 }) {
   const overview = useConvexQuery(api.agents.getProjectOverview, { projectId })
+  const deleteProjectMut = useMutation(api.agents.deleteProject)
   const [activeTab, setActiveTab] = useState('tasks')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteProject = async () => {
+    setDeleting(true)
+    try {
+      await deleteProjectMut({ projectId })
+      setShowDeleteConfirm(false)
+      onDeleted?.()
+    } catch (err) {
+      console.error('Failed to delete project:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   if (!overview) {
     return (
@@ -434,14 +456,25 @@ function ProjectDetail({
               <p className="text-xs text-muted-foreground/70 mt-1 max-w-xl">{project.description}</p>
             )}
           </div>
-          <div className="text-right text-xs text-muted-foreground shrink-0">
-            <p>{new Date(project.startDate).toLocaleDateString()} — {new Date(project.targetDate).toLocaleDateString()}</p>
-            <p className={cn(
-              'font-medium mt-0.5',
-              daysUntilTarget < 0 ? 'text-red-500' : daysUntilTarget <= 7 ? 'text-amber-500' : 'text-muted-foreground',
-            )}>
-              {daysUntilTarget < 0 ? `${Math.abs(daysUntilTarget)}d overdue` : `${daysUntilTarget}d remaining`}
-            </p>
+          <div className="flex items-start gap-3 shrink-0">
+            <div className="text-right text-xs text-muted-foreground">
+              <p>{new Date(project.startDate).toLocaleDateString()} — {new Date(project.targetDate).toLocaleDateString()}</p>
+              <p className={cn(
+                'font-medium mt-0.5',
+                daysUntilTarget < 0 ? 'text-red-500' : daysUntilTarget <= 7 ? 'text-amber-500' : 'text-muted-foreground',
+              )}>
+                {daysUntilTarget < 0 ? `${Math.abs(daysUntilTarget)}d overdue` : `${daysUntilTarget}d remaining`}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete project"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
@@ -455,6 +488,27 @@ function ProjectDetail({
             style={{ width: `${timelineProgress}%` }}
           />
         </div>
+
+        {/* Delete confirmation */}
+        <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete "{project.name}"?</DialogTitle>
+              <DialogDescription>
+                This will permanently delete the project. Tasks will be unlinked but not deleted. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteProject} disabled={deleting}>
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats row */}

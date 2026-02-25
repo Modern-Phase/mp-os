@@ -686,6 +686,52 @@ export const updateProject = mutation({
   },
 });
 
+export const deleteProject = mutation({
+  args: {
+    projectId: v.id("agentProjects"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    // Unlink tasks from this project (don't delete them)
+    const tasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("projectId", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const task of tasks) {
+      await ctx.db.patch(task._id, { projectId: undefined });
+    }
+
+    // Unlink any CRM leads tied to this project
+    const leads = await ctx.db
+      .query("crmLeads")
+      .withIndex("orgId", (q) => q.eq("orgId", project.orgId))
+      .collect();
+    for (const lead of leads) {
+      if (lead.projectId === args.projectId) {
+        await ctx.db.patch(lead._id, { projectId: undefined });
+      }
+    }
+
+    await ctx.db.delete(args.projectId);
+
+    await ctx.db.insert("agentActivity", {
+      orgId: project.orgId,
+      agentId: project.agents[0] || ("oliver" as any),
+      action: "project_deleted",
+      target: project.name,
+      timestamp: Date.now(),
+    });
+
+    return true;
+  },
+});
+
 export const createProject = mutation({
   args: {
     orgId: v.id("organizations"),
