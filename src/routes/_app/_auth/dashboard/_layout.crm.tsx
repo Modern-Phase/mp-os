@@ -74,12 +74,6 @@ function CrmPage() {
   const agents = useConvexQuery(api.agents.getAgents, orgId ? { orgId } : 'skip')
   const pipelineStats = useConvexQuery(api.crm.getPipelineStats, orgId ? { orgId } : 'skip')
 
-  // Seed project templates (idempotent)
-  const seedTemplates = useMutation(api.projectTemplates.seedProjectTemplates)
-  useEffect(() => {
-    if (orgId) seedTemplates().catch(console.error)
-  }, [orgId, seedTemplates])
-
   const createLead = useMutation(api.crm.createLead)
 
   const [activeView, setActiveView] = useState('pipeline')
