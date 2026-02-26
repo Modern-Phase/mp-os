@@ -20,13 +20,18 @@ import type * as app from "../app.js";
 import type * as auditLog from "../auditLog.js";
 import type * as chat from "../chat.js";
 import type * as collections from "../collections.js";
+import type * as contracts from "../contracts.js";
 import type * as crm from "../crm.js";
 import type * as crons from "../crons.js";
 import type * as discord from "../discord.js";
 import type * as doclingParse from "../doclingParse.js";
 import type * as documents from "../documents.js";
 import type * as email_index from "../email/index.js";
+import type * as email_templates_contractEmail from "../email/templates/contractEmail.js";
+import type * as email_templates_invoiceEmail from "../email/templates/invoiceEmail.js";
+import type * as email_templates_proposalEmail from "../email/templates/proposalEmail.js";
 import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
+import type * as emailSequences from "../emailSequences.js";
 import type * as env from "../env.js";
 import type * as gatewayIntegration from "../gatewayIntegration.js";
 import type * as gdpr from "../gdpr.js";
@@ -34,6 +39,7 @@ import type * as helicone from "../helicone.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as instantly from "../instantly.js";
+import type * as invoices from "../invoices.js";
 import type * as largeUpload from "../largeUpload.js";
 import type * as largeUploadMutations from "../largeUploadMutations.js";
 import type * as llamaParse from "../llamaParse.js";
@@ -43,6 +49,7 @@ import type * as outboundEmail from "../outboundEmail.js";
 import type * as processingJobs from "../processingJobs.js";
 import type * as projectTemplates from "../projectTemplates.js";
 import type * as promptSecurity from "../promptSecurity.js";
+import type * as proposals from "../proposals.js";
 import type * as quickWinTemplates from "../quickWinTemplates.js";
 import type * as rag from "../rag.js";
 import type * as ragLarge from "../ragLarge.js";
@@ -54,6 +61,7 @@ import type * as usage from "../usage.js";
 import type * as utils_auth from "../utils/auth.js";
 import type * as vpsOrchestrator from "../vpsOrchestrator.js";
 import type * as waitlist from "../waitlist.js";
+import type * as workflows from "../workflows.js";
 
 import type {
   ApiFromModules,
@@ -74,13 +82,18 @@ declare const fullApi: ApiFromModules<{
   auditLog: typeof auditLog;
   chat: typeof chat;
   collections: typeof collections;
+  contracts: typeof contracts;
   crm: typeof crm;
   crons: typeof crons;
   discord: typeof discord;
   doclingParse: typeof doclingParse;
   documents: typeof documents;
   "email/index": typeof email_index;
+  "email/templates/contractEmail": typeof email_templates_contractEmail;
+  "email/templates/invoiceEmail": typeof email_templates_invoiceEmail;
+  "email/templates/proposalEmail": typeof email_templates_proposalEmail;
   "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
+  emailSequences: typeof emailSequences;
   env: typeof env;
   gatewayIntegration: typeof gatewayIntegration;
   gdpr: typeof gdpr;
@@ -88,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   init: typeof init;
   instantly: typeof instantly;
+  invoices: typeof invoices;
   largeUpload: typeof largeUpload;
   largeUploadMutations: typeof largeUploadMutations;
   llamaParse: typeof llamaParse;
@@ -97,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   processingJobs: typeof processingJobs;
   projectTemplates: typeof projectTemplates;
   promptSecurity: typeof promptSecurity;
+  proposals: typeof proposals;
   quickWinTemplates: typeof quickWinTemplates;
   rag: typeof rag;
   ragLarge: typeof ragLarge;
@@ -108,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "utils/auth": typeof utils_auth;
   vpsOrchestrator: typeof vpsOrchestrator;
   waitlist: typeof waitlist;
+  workflows: typeof workflows;
 }>;
 
 /**

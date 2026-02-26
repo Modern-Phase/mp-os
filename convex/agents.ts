@@ -682,6 +682,22 @@ export const updateProject = mutation({
       await ctx.db.patch(args.projectId, patch);
     }
 
+    // Fire workflow trigger on status change
+    if (args.status && args.status !== project.status) {
+      await ctx.scheduler.runAfter(0, internal.workflows.INTERNAL_processWorkflowTrigger, {
+        orgId: project.orgId,
+        trigger: "project_status_change",
+        context: {
+          projectId: String(args.projectId),
+          projectStatus: args.status,
+          previousStatus: project.status,
+          client: project.client,
+          projectName: project.name,
+        },
+        userId,
+      });
+    }
+
     return true;
   },
 });

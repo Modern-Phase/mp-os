@@ -23,6 +23,9 @@ import {
   MessageSquare,
   Mail,
   MailX,
+  Receipt,
+  FileText,
+  ScrollText,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
 
@@ -35,6 +38,13 @@ const TYPE_ICONS: Record<NotificationType, typeof Bell> = {
   agent_message: MessageSquare,
   email_reply: Mail,
   email_bounce: MailX,
+  invoice_sent: Receipt,
+  invoice_paid: Receipt,
+  proposal_sent: FileText,
+  proposal_accepted: FileText,
+  proposal_rejected: FileText,
+  contract_sent: ScrollText,
+  contract_signed: ScrollText,
 }
 
 const TYPE_COLORS: Record<NotificationType, string> = {
@@ -46,6 +56,13 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   agent_message: 'text-sky-500',
   email_reply: 'text-emerald-500',
   email_bounce: 'text-orange-500',
+  invoice_sent: 'text-blue-500',
+  invoice_paid: 'text-green-500',
+  proposal_sent: 'text-blue-500',
+  proposal_accepted: 'text-green-500',
+  proposal_rejected: 'text-red-500',
+  contract_sent: 'text-blue-500',
+  contract_signed: 'text-green-500',
 }
 
 function getNotificationRoute(n: any): { to: string; search?: Record<string, string> } {
@@ -58,6 +75,12 @@ function getNotificationRoute(n: any): { to: string; search?: Record<string, str
       return n.agentId
         ? { to: '/dashboard/agent-chat', search: { agentId: n.agentId } }
         : { to: '/dashboard/agent-chat' }
+    case 'invoice':
+      return { to: '/dashboard/invoices' }
+    case 'proposal':
+      return { to: '/dashboard/proposals' }
+    case 'contract':
+      return { to: '/dashboard/contracts' }
     case 'task':
     default:
       return { to: '/dashboard' }

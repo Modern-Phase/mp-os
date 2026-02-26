@@ -232,6 +232,13 @@ export const NOTIFICATION_TYPES = {
   AGENT_MESSAGE: "agent_message",
   EMAIL_REPLY: "email_reply",
   EMAIL_BOUNCE: "email_bounce",
+  INVOICE_SENT: "invoice_sent",
+  INVOICE_PAID: "invoice_paid",
+  PROPOSAL_SENT: "proposal_sent",
+  PROPOSAL_ACCEPTED: "proposal_accepted",
+  PROPOSAL_REJECTED: "proposal_rejected",
+  CONTRACT_SENT: "contract_sent",
+  CONTRACT_SIGNED: "contract_signed",
 } as const;
 
 export const notificationTypeValidator = v.union(
@@ -243,8 +250,118 @@ export const notificationTypeValidator = v.union(
   v.literal("agent_message"),
   v.literal("email_reply"),
   v.literal("email_bounce"),
+  v.literal("invoice_sent"),
+  v.literal("invoice_paid"),
+  v.literal("proposal_sent"),
+  v.literal("proposal_accepted"),
+  v.literal("proposal_rejected"),
+  v.literal("contract_sent"),
+  v.literal("contract_signed"),
 );
 export type NotificationType = Infer<typeof notificationTypeValidator>;
+
+// INVOICE SYSTEM
+export const INVOICE_STATUSES = {
+  DRAFT: "draft",
+  SENT: "sent",
+  PAID: "paid",
+  OVERDUE: "overdue",
+  CANCELLED: "cancelled",
+} as const;
+export const invoiceStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("paid"),
+  v.literal("overdue"),
+  v.literal("cancelled"),
+);
+export type InvoiceStatus = Infer<typeof invoiceStatusValidator>;
+
+// PROPOSAL SYSTEM
+export const PROPOSAL_STATUSES = {
+  DRAFT: "draft",
+  SENT: "sent",
+  VIEWED: "viewed",
+  ACCEPTED: "accepted",
+  REJECTED: "rejected",
+} as const;
+export const proposalStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("viewed"),
+  v.literal("accepted"),
+  v.literal("rejected"),
+);
+export type ProposalStatus = Infer<typeof proposalStatusValidator>;
+
+// CONTRACT SYSTEM
+export const CONTRACT_STATUSES = {
+  DRAFT: "draft",
+  SENT: "sent",
+  VIEWED: "viewed",
+  SIGNED: "signed",
+  EXPIRED: "expired",
+} as const;
+export const contractStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("viewed"),
+  v.literal("signed"),
+  v.literal("expired"),
+);
+export type ContractStatus = Infer<typeof contractStatusValidator>;
+
+// WORKFLOW AUTOMATION
+export const WORKFLOW_TRIGGERS = {
+  STAGE_CHANGE: "stage_change",
+  PROJECT_STATUS_CHANGE: "project_status_change",
+  INVOICE_STATUS_CHANGE: "invoice_status_change",
+  PROPOSAL_STATUS_CHANGE: "proposal_status_change",
+  CONTRACT_STATUS_CHANGE: "contract_status_change",
+  MANUAL: "manual",
+} as const;
+export const workflowTriggerValidator = v.union(
+  v.literal("stage_change"),
+  v.literal("project_status_change"),
+  v.literal("invoice_status_change"),
+  v.literal("proposal_status_change"),
+  v.literal("contract_status_change"),
+  v.literal("manual"),
+);
+export type WorkflowTrigger = Infer<typeof workflowTriggerValidator>;
+
+export const WORKFLOW_ACTION_TYPES = {
+  CREATE_INVOICE: "create_invoice",
+  CREATE_PROPOSAL: "create_proposal",
+  CREATE_CONTRACT: "create_contract",
+  SEND_EMAIL: "send_email",
+  CREATE_TASK: "create_task",
+  UPDATE_STAGE: "update_stage",
+} as const;
+export const workflowActionTypeValidator = v.union(
+  v.literal("create_invoice"),
+  v.literal("create_proposal"),
+  v.literal("create_contract"),
+  v.literal("send_email"),
+  v.literal("create_task"),
+  v.literal("update_stage"),
+);
+export type WorkflowActionType = Infer<typeof workflowActionTypeValidator>;
+
+// EMAIL SEQUENCES
+export const ENROLLMENT_STATUSES = {
+  ACTIVE: "active",
+  COMPLETED: "completed",
+  PAUSED: "paused",
+  CANCELLED: "cancelled",
+} as const;
+export const enrollmentStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("completed"),
+  v.literal("paused"),
+  v.literal("cancelled"),
+);
+export type EnrollmentStatus = Infer<typeof enrollmentStatusValidator>;
 
 export const PROJECT_STATUSES = {
   PLANNING: "planning",
@@ -858,7 +975,7 @@ const schema = defineSchema({
     title: v.string(),
     body: v.string(),
     read: v.boolean(),
-    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"))),
+    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"), v.literal("invoice"), v.literal("proposal"), v.literal("contract"))),
     resourceId: v.optional(v.string()),
     agentId: v.optional(agentIdValidator),
     createdAt: v.number(),
@@ -1037,6 +1154,150 @@ const schema = defineSchema({
     .index("agentId", ["agentId"])
     .index("sessionId", ["sessionId"])
     .index("orgId_agentId", ["orgId", "agentId"]),
+
+  // ========== BUSINESS DOCUMENTS ==========
+
+  // Invoices
+  invoices: defineTable({
+    orgId: v.id("organizations"),
+    projectId: v.optional(v.id("agentProjects")),
+    leadId: v.optional(v.id("crmLeads")),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    invoiceNumber: v.string(),
+    items: v.array(v.object({
+      description: v.string(),
+      quantity: v.number(),
+      unitPrice: v.number(),
+      total: v.number(),
+    })),
+    subtotal: v.number(),
+    taxRate: v.optional(v.number()),
+    tax: v.number(),
+    total: v.number(),
+    currency: v.string(),
+    status: invoiceStatusValidator,
+    dueDate: v.number(),
+    paidAt: v.optional(v.number()),
+    stripeInvoiceId: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("projectId", ["projectId"])
+    .index("leadId", ["leadId"]),
+
+  // Proposals
+  proposals: defineTable({
+    orgId: v.id("organizations"),
+    leadId: v.optional(v.id("crmLeads")),
+    projectId: v.optional(v.id("agentProjects")),
+    title: v.string(),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    sections: v.array(v.object({
+      title: v.string(),
+      description: v.string(),
+      items: v.array(v.object({
+        description: v.string(),
+        quantity: v.number(),
+        unitPrice: v.number(),
+        total: v.number(),
+      })),
+    })),
+    totalValue: v.number(),
+    currency: v.string(),
+    status: proposalStatusValidator,
+    validUntil: v.number(),
+    acceptedAt: v.optional(v.number()),
+    rejectedAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    accessToken: v.string(),
+    templateId: v.optional(v.id("projectTemplates")),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("leadId", ["leadId"])
+    .index("accessToken", ["accessToken"]),
+
+  // Contracts
+  contracts: defineTable({
+    orgId: v.id("organizations"),
+    leadId: v.optional(v.id("crmLeads")),
+    projectId: v.optional(v.id("agentProjects")),
+    proposalId: v.optional(v.id("proposals")),
+    title: v.string(),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    content: v.string(), // markdown
+    status: contractStatusValidator,
+    sentAt: v.optional(v.number()),
+    viewedAt: v.optional(v.number()),
+    signedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    signatureData: v.optional(v.object({
+      name: v.string(),
+      agreedAt: v.number(),
+      ipAddress: v.optional(v.string()),
+      userAgent: v.optional(v.string()),
+    })),
+    accessToken: v.string(),
+    templateKey: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("leadId", ["leadId"])
+    .index("proposalId", ["proposalId"])
+    .index("accessToken", ["accessToken"]),
+
+  // Workflow Rules
+  workflowRules: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    trigger: workflowTriggerValidator,
+    conditions: v.any(),
+    actions: v.array(v.object({
+      type: workflowActionTypeValidator,
+      config: v.any(),
+    })),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_trigger", ["orgId", "trigger"]),
+
+  // Email Sequences
+  emailSequences: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    steps: v.array(v.object({
+      delayDays: v.number(),
+      subject: v.string(),
+      body: v.string(),
+    })),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"]),
+
+  // Email Sequence Enrollments
+  emailSequenceEnrollments: defineTable({
+    orgId: v.id("organizations"),
+    sequenceId: v.id("emailSequences"),
+    leadId: v.id("crmLeads"),
+    currentStep: v.number(),
+    status: enrollmentStatusValidator,
+    nextSendAt: v.optional(v.number()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("orgId", ["orgId"])
+    .index("sequenceId", ["sequenceId"])
+    .index("leadId", ["leadId"])
+    .index("status_nextSendAt", ["status", "nextSendAt"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

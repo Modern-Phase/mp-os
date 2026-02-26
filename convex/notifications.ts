@@ -99,7 +99,7 @@ export const INTERNAL_createNotification = internalMutation({
     type: notificationTypeValidator,
     title: v.string(),
     body: v.string(),
-    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"))),
+    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"), v.literal("invoice"), v.literal("proposal"), v.literal("contract"))),
     resourceId: v.optional(v.string()),
     agentId: v.optional(agentIdValidator),
   },

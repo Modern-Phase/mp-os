@@ -1142,4 +1142,248 @@ http.route({
   }),
 });
 
+// ========== PROPOSAL PUBLIC ENDPOINTS ==========
+
+http.route({
+  path: "/api/proposal/view",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/proposal/view",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const token = url.searchParams.get("token");
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      const proposal = await ctx.runQuery(api.proposals.getProposalByToken, { accessToken: token });
+      if (!proposal) {
+        return new Response(JSON.stringify({ error: "Proposal not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      // Mark as viewed
+      await ctx.runMutation(internal.proposals.INTERNAL_markViewed, { accessToken: token });
+
+      return new Response(JSON.stringify(proposal), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Failed to load proposal" }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/api/proposal/accept",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/proposal/accept",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { token } = await request.json();
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      await ctx.runMutation(internal.proposals.INTERNAL_acceptProposal, { accessToken: token });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Failed to accept proposal" }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/api/proposal/reject",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/proposal/reject",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { token, reason } = await request.json();
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      await ctx.runMutation(internal.proposals.INTERNAL_rejectProposal, { accessToken: token, reason });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Failed to reject proposal" }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+  }),
+});
+
+// ========== CONTRACT PUBLIC ENDPOINTS ==========
+
+http.route({
+  path: "/api/contract/view",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/contract/view",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const token = url.searchParams.get("token");
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      const contract = await ctx.runQuery(api.contracts.getContractByToken, { accessToken: token });
+      if (!contract) {
+        return new Response(JSON.stringify({ error: "Contract not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      await ctx.runMutation(internal.contracts.INTERNAL_markViewed, { accessToken: token });
+
+      return new Response(JSON.stringify(contract), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Failed to load contract" }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/api/contract/sign",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/contract/sign",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { token, signatureName } = await request.json();
+      if (!token || !signatureName) {
+        return new Response(JSON.stringify({ error: "Missing token or signatureName" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      const userAgent = request.headers.get("User-Agent") || undefined;
+
+      await ctx.runMutation(internal.contracts.INTERNAL_recordSignature, {
+        accessToken: token,
+        signatureName,
+        userAgent,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Failed to sign contract" }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+  }),
+});
+
 export default http;

@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as PTokenRouteImport } from './routes/p/$token'
+import { Route as CTokenRouteImport } from './routes/c/$token'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as AppAuthRouteImport } from './routes/_app/_auth'
 import { Route as AppLoginLayoutRouteImport } from './routes/_app/login/_layout'
@@ -23,12 +25,17 @@ import { Route as AppAuthOnboardingLayoutRouteImport } from './routes/_app/_auth
 import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/dashboard/_layout'
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
+import { Route as AppAuthDashboardLayoutWorkflowsRouteImport } from './routes/_app/_auth/dashboard/_layout.workflows'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
+import { Route as AppAuthDashboardLayoutSequencesRouteImport } from './routes/_app/_auth/dashboard/_layout.sequences'
+import { Route as AppAuthDashboardLayoutProposalsRouteImport } from './routes/_app/_auth/dashboard/_layout.proposals'
 import { Route as AppAuthDashboardLayoutProjectsRouteImport } from './routes/_app/_auth/dashboard/_layout.projects'
 import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
+import { Route as AppAuthDashboardLayoutInvoicesRouteImport } from './routes/_app/_auth/dashboard/_layout.invoices'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCrmRouteImport } from './routes/_app/_auth/dashboard/_layout.crm'
+import { Route as AppAuthDashboardLayoutContractsRouteImport } from './routes/_app/_auth/dashboard/_layout.contracts'
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
 import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
@@ -47,6 +54,16 @@ const IndexRoute = IndexRouteImport.update({
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PTokenRoute = PTokenRouteImport.update({
+  id: '/p/$token',
+  path: '/p/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CTokenRoute = CTokenRouteImport.update({
+  id: '/c/$token',
+  path: '/c/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -105,10 +122,28 @@ const AppAuthOnboardingLayoutUsernameRoute =
     path: '/username',
     getParentRoute: () => AppAuthOnboardingLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutWorkflowsRoute =
+  AppAuthDashboardLayoutWorkflowsRouteImport.update({
+    id: '/workflows',
+    path: '/workflows',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutSettingsRoute =
   AppAuthDashboardLayoutSettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutSequencesRoute =
+  AppAuthDashboardLayoutSequencesRouteImport.update({
+    id: '/sequences',
+    path: '/sequences',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutProposalsRoute =
+  AppAuthDashboardLayoutProposalsRouteImport.update({
+    id: '/proposals',
+    path: '/proposals',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutProjectsRoute =
@@ -121,6 +156,12 @@ const AppAuthDashboardLayoutMissionControlRoute =
   AppAuthDashboardLayoutMissionControlRouteImport.update({
     id: '/mission-control',
     path: '/mission-control',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutInvoicesRoute =
+  AppAuthDashboardLayoutInvoicesRouteImport.update({
+    id: '/invoices',
+    path: '/invoices',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutGdprRoute =
@@ -139,6 +180,12 @@ const AppAuthDashboardLayoutCrmRoute =
   AppAuthDashboardLayoutCrmRouteImport.update({
     id: '/crm',
     path: '/crm',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutContractsRoute =
+  AppAuthDashboardLayoutContractsRouteImport.update({
+    id: '/contracts',
+    path: '/contracts',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutCheckoutRoute =
@@ -175,6 +222,8 @@ const AppAuthDashboardLayoutSettingsBillingRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/c/$token': typeof CTokenRoute
+  '/p/$token': typeof PTokenRoute
   '/blog/': typeof BlogIndexRoute
   '/chat': typeof AppAuthChatRoute
   '/privacy': typeof AppAuthPrivacyRoute
@@ -186,12 +235,17 @@ export interface FileRoutesByFullPath {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
+  '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
+  '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -200,6 +254,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/c/$token': typeof CTokenRoute
+  '/p/$token': typeof PTokenRoute
   '/blog': typeof BlogIndexRoute
   '/chat': typeof AppAuthChatRoute
   '/privacy': typeof AppAuthPrivacyRoute
@@ -209,11 +265,16 @@ export interface FileRoutesByTo {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
+  '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
+  '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
+  '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -225,6 +286,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/_auth': typeof AppAuthRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
+  '/c/$token': typeof CTokenRoute
+  '/p/$token': typeof PTokenRoute
   '/blog/': typeof BlogIndexRoute
   '/_app/_auth/chat': typeof AppAuthChatRoute
   '/_app/_auth/privacy': typeof AppAuthPrivacyRoute
@@ -236,12 +299,17 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/_app/_auth/dashboard/_layout/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/_app/_auth/dashboard/_layout/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/_app/_auth/dashboard/_layout/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
+  '/_app/_auth/dashboard/_layout/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/_app/_auth/dashboard/_layout/projects': typeof AppAuthDashboardLayoutProjectsRoute
+  '/_app/_auth/dashboard/_layout/proposals': typeof AppAuthDashboardLayoutProposalsRoute
+  '/_app/_auth/dashboard/_layout/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  '/_app/_auth/dashboard/_layout/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
   '/_app/_auth/dashboard/_layout/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -252,6 +320,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/blog/$slug'
+    | '/c/$token'
+    | '/p/$token'
     | '/blog/'
     | '/chat'
     | '/privacy'
@@ -263,12 +333,17 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
+    | '/dashboard/invoices'
     | '/dashboard/mission-control'
     | '/dashboard/projects'
+    | '/dashboard/proposals'
+    | '/dashboard/sequences'
     | '/dashboard/settings'
+    | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard/'
     | '/dashboard/settings/billing'
@@ -277,6 +352,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/blog/$slug'
+    | '/c/$token'
+    | '/p/$token'
     | '/blog'
     | '/chat'
     | '/privacy'
@@ -286,11 +363,16 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
     | '/dashboard/gdpr'
+    | '/dashboard/invoices'
     | '/dashboard/mission-control'
     | '/dashboard/projects'
+    | '/dashboard/proposals'
+    | '/dashboard/sequences'
+    | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard'
     | '/dashboard/settings/billing'
@@ -301,6 +383,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_app/_auth'
     | '/blog/$slug'
+    | '/c/$token'
+    | '/p/$token'
     | '/blog/'
     | '/_app/_auth/chat'
     | '/_app/_auth/privacy'
@@ -312,12 +396,17 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/agent-chat'
     | '/_app/_auth/dashboard/_layout/analytics'
     | '/_app/_auth/dashboard/_layout/checkout'
+    | '/_app/_auth/dashboard/_layout/contracts'
     | '/_app/_auth/dashboard/_layout/crm'
     | '/_app/_auth/dashboard/_layout/documents'
     | '/_app/_auth/dashboard/_layout/gdpr'
+    | '/_app/_auth/dashboard/_layout/invoices'
     | '/_app/_auth/dashboard/_layout/mission-control'
     | '/_app/_auth/dashboard/_layout/projects'
+    | '/_app/_auth/dashboard/_layout/proposals'
+    | '/_app/_auth/dashboard/_layout/sequences'
     | '/_app/_auth/dashboard/_layout/settings'
+    | '/_app/_auth/dashboard/_layout/workflows'
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
     | '/_app/_auth/dashboard/_layout/settings/billing'
@@ -328,6 +417,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   BlogSlugRoute: typeof BlogSlugRoute
+  CTokenRoute: typeof CTokenRoute
+  PTokenRoute: typeof PTokenRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -352,6 +443,20 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$token': {
+      id: '/p/$token'
+      path: '/p/$token'
+      fullPath: '/p/$token'
+      preLoaderRoute: typeof PTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$token': {
+      id: '/c/$token'
+      path: '/c/$token'
+      fullPath: '/c/$token'
+      preLoaderRoute: typeof CTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -431,11 +536,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthOnboardingLayoutUsernameRouteImport
       parentRoute: typeof AppAuthOnboardingLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/workflows': {
+      id: '/_app/_auth/dashboard/_layout/workflows'
+      path: '/workflows'
+      fullPath: '/dashboard/workflows'
+      preLoaderRoute: typeof AppAuthDashboardLayoutWorkflowsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/settings': {
       id: '/_app/_auth/dashboard/_layout/settings'
       path: '/settings'
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/sequences': {
+      id: '/_app/_auth/dashboard/_layout/sequences'
+      path: '/sequences'
+      fullPath: '/dashboard/sequences'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSequencesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/proposals': {
+      id: '/_app/_auth/dashboard/_layout/proposals'
+      path: '/proposals'
+      fullPath: '/dashboard/proposals'
+      preLoaderRoute: typeof AppAuthDashboardLayoutProposalsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/projects': {
@@ -450,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/mission-control'
       fullPath: '/dashboard/mission-control'
       preLoaderRoute: typeof AppAuthDashboardLayoutMissionControlRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/invoices': {
+      id: '/_app/_auth/dashboard/_layout/invoices'
+      path: '/invoices'
+      fullPath: '/dashboard/invoices'
+      preLoaderRoute: typeof AppAuthDashboardLayoutInvoicesRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/gdpr': {
@@ -471,6 +604,13 @@ declare module '@tanstack/react-router' {
       path: '/crm'
       fullPath: '/dashboard/crm'
       preLoaderRoute: typeof AppAuthDashboardLayoutCrmRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/contracts': {
+      id: '/_app/_auth/dashboard/_layout/contracts'
+      path: '/contracts'
+      fullPath: '/dashboard/contracts'
+      preLoaderRoute: typeof AppAuthDashboardLayoutContractsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/checkout': {
@@ -533,12 +673,17 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutAgentChatRoute: typeof AppAuthDashboardLayoutAgentChatRoute
   AppAuthDashboardLayoutAnalyticsRoute: typeof AppAuthDashboardLayoutAnalyticsRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
+  AppAuthDashboardLayoutContractsRoute: typeof AppAuthDashboardLayoutContractsRoute
   AppAuthDashboardLayoutCrmRoute: typeof AppAuthDashboardLayoutCrmRoute
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
+  AppAuthDashboardLayoutInvoicesRoute: typeof AppAuthDashboardLayoutInvoicesRoute
   AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
   AppAuthDashboardLayoutProjectsRoute: typeof AppAuthDashboardLayoutProjectsRoute
+  AppAuthDashboardLayoutProposalsRoute: typeof AppAuthDashboardLayoutProposalsRoute
+  AppAuthDashboardLayoutSequencesRoute: typeof AppAuthDashboardLayoutSequencesRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  AppAuthDashboardLayoutWorkflowsRoute: typeof AppAuthDashboardLayoutWorkflowsRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
 }
 
@@ -547,14 +692,19 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutAgentChatRoute: AppAuthDashboardLayoutAgentChatRoute,
     AppAuthDashboardLayoutAnalyticsRoute: AppAuthDashboardLayoutAnalyticsRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
+    AppAuthDashboardLayoutContractsRoute: AppAuthDashboardLayoutContractsRoute,
     AppAuthDashboardLayoutCrmRoute: AppAuthDashboardLayoutCrmRoute,
     AppAuthDashboardLayoutDocumentsRoute: AppAuthDashboardLayoutDocumentsRoute,
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
+    AppAuthDashboardLayoutInvoicesRoute: AppAuthDashboardLayoutInvoicesRoute,
     AppAuthDashboardLayoutMissionControlRoute:
       AppAuthDashboardLayoutMissionControlRoute,
     AppAuthDashboardLayoutProjectsRoute: AppAuthDashboardLayoutProjectsRoute,
+    AppAuthDashboardLayoutProposalsRoute: AppAuthDashboardLayoutProposalsRoute,
+    AppAuthDashboardLayoutSequencesRoute: AppAuthDashboardLayoutSequencesRoute,
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
+    AppAuthDashboardLayoutWorkflowsRoute: AppAuthDashboardLayoutWorkflowsRoute,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
   }
 
@@ -624,6 +774,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   BlogSlugRoute: BlogSlugRoute,
+  CTokenRoute: CTokenRoute,
+  PTokenRoute: PTokenRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport

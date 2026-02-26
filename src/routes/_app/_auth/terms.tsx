@@ -67,17 +67,23 @@ function TermsOfService() {
               Service Description
             </CardTitle>
             <CardDescription>
-              We provide an AI-powered platform for document management and chat
-              interactions.
+              We provide an AI-powered business operations platform for CRM,
+              project management, AI agents, invoicing, proposals, and
+              contracts.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <h4 className="font-semibold">Services Include</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• CRM and lead pipeline management</li>
+                <li>• Project management and task tracking</li>
+                <li>• AI-powered agent interactions</li>
+                <li>• Invoicing and payment processing</li>
+                <li>• Proposal creation and e-signatures</li>
+                <li>• Contract management and digital signing</li>
+                <li>• Email sequences and automation</li>
                 <li>• Document upload and storage</li>
-                <li>• AI-powered chat interactions</li>
-                <li>• Document analysis and retrieval</li>
                 <li>• User account management</li>
                 <li>• Subscription-based billing</li>
               </ul>
@@ -362,13 +368,13 @@ function TermsOfService() {
           <CardContent>
             <div className="space-y-2 text-sm">
               <p>
-                <strong>Email:</strong> legal@modernphase.app
+                <strong>Email:</strong> legal@modernphase.io
               </p>
               <p>
                 <strong>Address:</strong> Modern Phase, [Address]
               </p>
               <p>
-                <strong>Support:</strong> support@modernphase.app
+                <strong>Support:</strong> support@modernphase.io
               </p>
             </div>
             <div className="mt-4 p-4 bg-muted rounded-lg">

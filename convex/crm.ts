@@ -431,6 +431,22 @@ export const updateLeadStage = mutation({
       });
     }
 
+    // Fire workflow automation trigger
+    await ctx.scheduler.runAfter(0, internal.workflows.INTERNAL_processWorkflowTrigger, {
+      orgId: lead.orgId,
+      trigger: "stage_change",
+      context: {
+        leadId: String(args.leadId),
+        fromStage: lead.stage,
+        toStage: args.stage,
+        clientName: lead.contactName,
+        clientEmail: lead.contactEmail,
+        company: lead.company,
+        leadValue: lead.value,
+      },
+      userId,
+    });
+
     return true;
   },
 });

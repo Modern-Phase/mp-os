@@ -64,6 +64,16 @@ function PrivacyPolicy() {
               </ul>
             </div>
             <div>
+              <h4 className="font-semibold mb-2">Business Document Data</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Invoice details (client info, line items, payment status)</li>
+                <li>Proposal content (sections, pricing, acceptance status)</li>
+                <li>Contract content (terms, signature data, IP address at signing)</li>
+                <li>Email sequence enrollment and delivery data</li>
+                <li>CRM lead and activity information</li>
+              </ul>
+            </div>
+            <div>
               <h4 className="font-semibold mb-2">Technical Data</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>IP address and general location</li>
@@ -293,13 +303,13 @@ function PrivacyPolicy() {
           <CardContent>
             <div className="space-y-2 text-sm">
               <p>
-                <strong>Email:</strong> privacy@modernphase.app
+                <strong>Email:</strong> privacy@modernphase.io
               </p>
               <p>
                 <strong>Address:</strong> Modern Phase, [Address]
               </p>
               <p>
-                <strong>Data Protection Officer:</strong> dpo@modernphase.app
+                <strong>Data Protection Officer:</strong> dpo@modernphase.io
               </p>
             </div>
             <div className="mt-4 p-4 bg-muted rounded-lg">

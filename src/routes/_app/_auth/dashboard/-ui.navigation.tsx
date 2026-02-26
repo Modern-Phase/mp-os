@@ -12,6 +12,10 @@ import {
   MessageSquare,
   Bot,
   FolderKanban,
+  Receipt,
+  ScrollText,
+  GitBranch,
+  Mail,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
@@ -36,6 +40,11 @@ const navItems = [
   { label: "CRM", path: "/dashboard/crm", icon: Users },
   { label: "Documents", path: "/dashboard/documents", icon: FileText },
   { label: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
+  { label: "Invoices", path: "/dashboard/invoices", icon: Receipt },
+  { label: "Proposals", path: "/dashboard/proposals", icon: FileText },
+  { label: "Contracts", path: "/dashboard/contracts", icon: ScrollText },
+  { label: "Workflows", path: "/dashboard/workflows", icon: GitBranch },
+  { label: "Sequences", path: "/dashboard/sequences", icon: Mail },
   { label: "AI Chat", path: "/chat", icon: MessageSquare },
   { label: "Agent Chat", path: "/dashboard/agent-chat", icon: Bot },
 ];

@@ -377,7 +377,7 @@ function GdprRequests() {
                 <p className="text-muted-foreground">
                   If you have questions about data deletion or want to request a
                   specific type of data removal, contact our support team at
-                  privacy@modernphase.app
+                  privacy@modernphase.io
                 </p>
               </div>
             </div>

@@ -2,8 +2,16 @@
 // Note: Convex crons run as internal actions, not user-facing actions
 
 import { cronJobs } from "convex/server";
+import { internal } from "./_generated/api";
 
 const crons = cronJobs();
+
+// Process email sequences every hour
+crons.interval(
+  "process-email-sequences",
+  { hours: 1 },
+  internal.emailSequences.INTERNAL_processScheduledEmails,
+);
 
 // Periodic sync of active agent data every 5 minutes
 // This is handled by the auto-sync after each agent response (agentChatWebhook.ts)
