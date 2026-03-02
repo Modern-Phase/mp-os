@@ -103,18 +103,11 @@ export const AGENT_IDS = {
 } as const;
 
 export const agentIdValidator = v.union(
-  // Active agents
   v.literal(AGENT_IDS.LARRY),
   v.literal(AGENT_IDS.OLIVER),
   v.literal(AGENT_IDS.FIONA),
   v.literal(AGENT_IDS.TAYLOR),
   v.literal(AGENT_IDS.MAX),
-  // Legacy — kept for backward compatibility with existing data
-  v.literal("lexi"),
-  v.literal("maya"),
-  v.literal("sam"),
-  v.literal("carl"),
-  v.literal("dana"),
 );
 export type AgentId = Infer<typeof agentIdValidator>;
 
