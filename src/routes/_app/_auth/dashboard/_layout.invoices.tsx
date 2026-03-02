@@ -16,6 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/ui/select";
 import { Loader2, Plus, Receipt, Trash2 } from "lucide-react";
 import { InvoiceDetailDialog } from "@/components/invoices/InvoiceDetailDialog";
 import siteConfig from "~/site.config";
@@ -58,7 +65,10 @@ function InvoicesPage() {
   }, [currentUser, orgId, orgEnsured, ensurePersonalOrg]);
 
   const invoices = useConvexQuery(api.invoices.getInvoices, orgId ? { orgId } : "skip");
+  const invoiceTemplates = useConvexQuery(api.invoices.getInvoiceTemplates);
+  const customTemplates = useConvexQuery(api.templates.getCustomTemplates, orgId ? { orgId, type: "invoice" as const } : "skip");
   const createInvoice = useMutation(api.invoices.createInvoice);
+  const createFromTemplate = useMutation(api.invoices.createInvoiceFromTemplate);
 
   const [activeTab, setActiveTab] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -66,6 +76,7 @@ function InvoicesPage() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   // Create form state
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -83,6 +94,7 @@ function InvoicesPage() {
   );
 
   const resetForm = () => {
+    setSelectedTemplate("");
     setClientName("");
     setClientEmail("");
     setItems([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
@@ -95,16 +107,27 @@ function InvoicesPage() {
     if (!orgId || !clientName || !clientEmail) return;
     setCreating(true);
     try {
-      await createInvoice({
-        orgId,
-        clientName,
-        clientEmail,
-        items: items.filter((i) => i.description),
-        taxRate: taxRate || undefined,
-        currency: "usd",
-        dueDate: new Date(dueDate).getTime(),
-        notes: notes || undefined,
-      });
+      if (selectedTemplate && selectedTemplate !== "custom") {
+        await createFromTemplate({
+          orgId,
+          templateKey: selectedTemplate,
+          clientName,
+          clientEmail,
+          taxRate: taxRate || undefined,
+          notes: notes || undefined,
+        });
+      } else {
+        await createInvoice({
+          orgId,
+          clientName,
+          clientEmail,
+          items: items.filter((i) => i.description),
+          taxRate: taxRate || undefined,
+          currency: "usd",
+          dueDate: new Date(dueDate).getTime(),
+          notes: notes || undefined,
+        });
+      }
       setCreateOpen(false);
       resetForm();
     } catch (err) {
@@ -162,6 +185,31 @@ function InvoicesPage() {
               <DialogTitle>New Invoice</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <div>
+                <Label>Start from Template</Label>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Custom (blank) or choose a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom (blank)</SelectItem>
+                    {invoiceTemplates?.map((t: any) => (
+                      <SelectItem key={t.key} value={t.key}>
+                        {t.name} {t.totalValue > 0 ? `— $${t.totalValue.toLocaleString()}` : ""} ({t.dueDays}d)
+                      </SelectItem>
+                    ))}
+                    {customTemplates && customTemplates.length > 0 && (
+                      <>
+                        {customTemplates.map((t: any) => (
+                          <SelectItem key={t._id} value={`custom:${t._id}`}>
+                            {t.name} (Custom)
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Client Name</Label>
@@ -173,52 +221,60 @@ function InvoicesPage() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Line Items</Label>
-                  <Button variant="ghost" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
+              {selectedTemplate && selectedTemplate !== "custom" ? (
+                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  Template will pre-fill line items, due date, and notes. You can edit after creation.
                 </div>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground px-1">
-                    <span className="col-span-5">Description</span>
-                    <span className="col-span-2">Qty</span>
-                    <span className="col-span-2">Price</span>
-                    <span className="col-span-2 text-right">Total</span>
-                    <span className="col-span-1" />
-                  </div>
-                  {items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <Input className="col-span-5" placeholder="Service description" value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} />
-                      <Input className="col-span-2" type="number" min={1} value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} />
-                      <Input className="col-span-2" type="number" min={0} step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} />
-                      <span className="col-span-2 text-sm text-right font-medium">${item.total.toFixed(2)}</span>
-                      {items.length > 1 && (
-                        <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeItem(i)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
+              ) : (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label>Line Items</Label>
+                      <Button variant="ghost" size="sm" onClick={addItem}>
+                        <Plus className="h-4 w-4 mr-1" /> Add
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground px-1">
+                        <span className="col-span-5">Description</span>
+                        <span className="col-span-2">Qty</span>
+                        <span className="col-span-2">Price</span>
+                        <span className="col-span-2 text-right">Total</span>
+                        <span className="col-span-1" />
+                      </div>
+                      {items.map((item, i) => (
+                        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                          <Input className="col-span-5" placeholder="Service description" value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} />
+                          <Input className="col-span-2" type="number" min={1} value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} />
+                          <Input className="col-span-2" type="number" min={0} step="0.01" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", e.target.value)} />
+                          <span className="col-span-2 text-sm text-right font-medium">${item.total.toFixed(2)}</span>
+                          {items.length > 1 && (
+                            <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeItem(i)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label>Tax Rate (%)</Label>
-                  <Input type="number" min={0} step="0.1" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
-                </div>
-                <div>
-                  <Label>Due Date</Label>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                </div>
-              </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label>Tax Rate (%)</Label>
+                      <Input type="number" min={0} step="0.1" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Label>Due Date</Label>
+                      <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                    </div>
+                  </div>
 
-              <div>
-                <Label>Notes</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, additional details..." rows={2} />
-              </div>
+                  <div>
+                    <Label>Notes</Label>
+                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, additional details..." rows={2} />
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>

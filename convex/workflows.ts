@@ -305,6 +305,31 @@ export const seedDefaultRules = mutation({
     if (existing.length > 0) return 0;
 
     const defaults = [
+      // === STAGE CHANGE TRIGGERS ===
+      {
+        name: "Welcome email on new lead",
+        trigger: "stage_change" as const,
+        conditions: { toStage: "new_lead" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "Welcome to Modern Phase, {{clientName}}!",
+            body: "Hi {{clientName}},\n\nThank you for your interest in Modern Phase! We specialize in building production-ready software for businesses like yours.\n\nA member of our team will be in touch shortly to learn more about your needs.\n\nBest,\nModern Phase",
+          },
+        }],
+      },
+      {
+        name: "Send discovery meeting invite on QUALIFIED",
+        trigger: "stage_change" as const,
+        conditions: { toStage: "qualified" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "Let's schedule a discovery call, {{clientName}}",
+            body: "Hi {{clientName}},\n\nGreat news — we think there's a strong fit between your needs and what we do at Modern Phase.\n\nI'd love to schedule a 30-minute discovery call to dive deeper into your goals and challenges. What does your availability look like this week?\n\nBest,\nModern Phase",
+          },
+        }],
+      },
       {
         name: "Auto-create proposal on PROPOSAL stage",
         trigger: "stage_change" as const,
@@ -312,11 +337,37 @@ export const seedDefaultRules = mutation({
         actions: [{ type: "create_proposal" as const, config: {} }],
       },
       {
-        name: "Auto-create contract on NEGOTIATION stage",
+        name: "Auto-create contract (MSA) on NEGOTIATION stage",
         trigger: "stage_change" as const,
         conditions: { toStage: "negotiation" },
         actions: [{ type: "create_contract" as const, config: { templateKey: "msa" } }],
       },
+      {
+        name: "Congratulations email on WON",
+        trigger: "stage_change" as const,
+        conditions: { toStage: "won" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "We're excited to work together, {{clientName}}!",
+            body: "Hi {{clientName}},\n\nWe're thrilled to officially welcome you as a Modern Phase client! Our team is excited to get started on your project.\n\nHere's what happens next:\n1. You'll receive a detailed project timeline within 48 hours\n2. We'll schedule a kickoff call to align on priorities\n3. Development begins immediately after kickoff\n\nIf you have any questions in the meantime, don't hesitate to reach out.\n\nBest,\nModern Phase",
+          },
+        }],
+      },
+      {
+        name: "Sorry to see you go — LOST follow-up",
+        trigger: "stage_change" as const,
+        conditions: { toStage: "lost" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "Thank you for considering Modern Phase",
+            body: "Hi {{clientName}},\n\nThank you for taking the time to explore working with Modern Phase. While we're sorry it didn't work out this time, we understand that timing and fit are important.\n\nIf your needs change in the future, we'd love to reconnect. We're always here to help.\n\nWishing you and your team all the best.\n\nBest,\nModern Phase",
+          },
+        }],
+      },
+
+      // === PROJECT STATUS TRIGGERS ===
       {
         name: "Auto-create invoice on project DELIVERED",
         trigger: "project_status_change" as const,
@@ -324,16 +375,58 @@ export const seedDefaultRules = mutation({
         actions: [{ type: "create_invoice" as const, config: { dueDays: 30 } }],
       },
       {
+        name: "Delivery notification email",
+        trigger: "project_status_change" as const,
+        conditions: { projectStatus: "delivered" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "Your project has been delivered, {{clientName}}!",
+            body: "Hi {{clientName}},\n\nGreat news — your project is complete and has been delivered! Here's a summary of what we've built:\n\nPlease review everything and let us know if you have any questions or feedback. We've included a 30-day post-delivery support window to make sure everything runs smoothly.\n\nYou'll also receive an invoice shortly with the final project details.\n\nBest,\nModern Phase",
+          },
+        }],
+      },
+
+      // === INVOICE TRIGGERS ===
+      {
         name: "Send thank-you email on invoice PAID",
         trigger: "invoice_status_change" as const,
         conditions: { invoiceStatus: "paid" },
         actions: [{
           type: "send_email" as const,
           config: {
-            subject: "Thank you, {{clientName}}!",
-            body: "Thank you for your payment! We appreciate your business and look forward to working with you again.",
+            subject: "Thank you for your payment, {{clientName}}!",
+            body: "Hi {{clientName}},\n\nThank you for your prompt payment! We truly appreciate your business.\n\nIf there's anything else we can help with — whether it's a new project, ongoing maintenance, or just a quick question — we're always here.\n\nLooking forward to continuing to work together!\n\nBest,\nModern Phase",
           },
         }],
+      },
+
+      // === PROPOSAL TRIGGERS ===
+      {
+        name: "Auto-create contract on proposal ACCEPTED",
+        trigger: "proposal_status_change" as const,
+        conditions: { proposalStatus: "accepted" },
+        actions: [{ type: "create_contract" as const, config: { templateKey: "sow" } }],
+      },
+      {
+        name: "Follow-up on proposal REJECTED",
+        trigger: "proposal_status_change" as const,
+        conditions: { proposalStatus: "rejected" },
+        actions: [{
+          type: "send_email" as const,
+          config: {
+            subject: "Your feedback matters, {{clientName}}",
+            body: "Hi {{clientName}},\n\nThank you for reviewing our proposal. We understand it may not have been the right fit at this time.\n\nWe'd really appreciate any feedback on what we could improve — whether it was pricing, scope, timing, or something else. Your insights help us serve future clients better.\n\nIf anything changes or you'd like to revisit the conversation, we're always happy to reconnect.\n\nBest,\nModern Phase",
+          },
+        }],
+      },
+
+      // === CONTRACT TRIGGERS ===
+      {
+        name: "Move lead to WON on contract SIGNED",
+        trigger: "contract_status_change" as const,
+        conditions: { contractStatus: "signed" },
+        actions: [{ type: "update_stage" as const, config: { targetStage: "won" } }],
       },
     ];
 

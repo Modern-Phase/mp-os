@@ -7,118 +7,113 @@ import { agentIdValidator, taskStatusValidator, priorityValidator, AGENT_IDS } f
 
 // ========== AGENT DEFINITIONS ==========
 
-const AGENT_DEFINITIONS = {
+const AGENT_DEFINITIONS: Record<string, {
+  agentId: string;
+  name: string;
+  role: string;
+  emoji: string;
+  color: string;
+  department: string;
+  description: string;
+  expertise: string[];
+  isActive: boolean;
+  soulPath: string;
+}> = {
   [AGENT_IDS.LARRY]: {
     agentId: AGENT_IDS.LARRY,
     name: "Larry",
-    role: "Lead Generation Specialist",
+    role: "Sales & Marketing",
     emoji: "🤖",
     color: "#3B82F6",
     department: "sales",
-    description: "Finds high-quality leads and builds prospect lists",
-    expertise: ["Prospect Research", "List Building", "Signal Detection", "ICP Matching"],
+    description: "Owns the full sales pipeline — lead gen, outreach, content, and marketing",
+    expertise: ["Prospect Research", "List Building", "Cold Email", "LinkedIn DMs", "Follow-up Sequences", "Content Strategy", "Social Media", "Case Studies"],
     isActive: true,
     soulPath: "agents/larry/SOUL.md",
-  },
-  [AGENT_IDS.LEXI]: {
-    agentId: AGENT_IDS.LEXI,
-    name: "Lexi",
-    role: "Outreach & Sales Development",
-    emoji: "📧",
-    color: "#8B5CF6",
-    department: "sales",
-    description: "Crafts cold emails and LinkedIn outreach that gets responses",
-    expertise: ["Cold Email", "LinkedIn DMs", "Follow-up Sequences", "A/B Testing"],
-    isActive: true,
-    soulPath: "agents/lexi/SOUL.md",
-  },
-  [AGENT_IDS.MAYA]: {
-    agentId: AGENT_IDS.MAYA,
-    name: "Maya",
-    role: "Content & Marketing",
-    emoji: "📊",
-    color: "#EC4899",
-    department: "sales",
-    description: "Creates content and marketing that builds authority",
-    expertise: ["Content Strategy", "Social Media", "Case Studies", "Landing Pages"],
-    isActive: true,
-    soulPath: "agents/maya/SOUL.md",
   },
   [AGENT_IDS.OLIVER]: {
     agentId: AGENT_IDS.OLIVER,
     name: "Oliver",
-    role: "Operations Manager",
+    role: "Operations",
     emoji: "📋",
     color: "#10B981",
     department: "ops",
-    description: "Keeps projects on track and surfaces blockers",
-    expertise: ["Project Management", "Timeline Tracking", "Risk Assessment", "Standups"],
+    description: "Keeps everything running — projects, scheduling, standups, and admin",
+    expertise: ["Project Management", "Timeline Tracking", "Risk Assessment", "Standups", "Calendar Management", "Meeting Notes", "Reminders", "Action Items"],
     isActive: true,
     soulPath: "agents/oliver/SOUL.md",
-  },
-  [AGENT_IDS.SAM]: {
-    agentId: AGENT_IDS.SAM,
-    name: "Sam",
-    role: "Scheduling & Admin",
-    emoji: "📅",
-    color: "#F59E0B",
-    department: "ops",
-    description: "Manages calendar, meetings, and reminders",
-    expertise: ["Calendar Management", "Meeting Notes", "Reminders", "Action Items"],
-    isActive: true,
-    soulPath: "agents/sam/SOUL.md",
   },
   [AGENT_IDS.FIONA]: {
     agentId: AGENT_IDS.FIONA,
     name: "Fiona",
-    role: "Finance Controller",
+    role: "Finance & Legal",
     emoji: "💵",
     color: "#059669",
     department: "finance",
-    description: "Watches the money — invoicing, revenue, cash flow",
-    expertise: ["Invoicing", "Revenue Tracking", "Cash Flow", "Forecasting"],
+    description: "Watches the money and protects the business — invoicing, contracts, cash flow",
+    expertise: ["Invoicing", "Revenue Tracking", "Cash Flow", "Forecasting", "SOWs", "MSAs", "Contract Review", "Templates"],
     isActive: true,
     soulPath: "agents/fiona/SOUL.md",
-  },
-  [AGENT_IDS.CARL]: {
-    agentId: AGENT_IDS.CARL,
-    name: "Carl",
-    role: "Contracts & Legal",
-    emoji: "🤝",
-    color: "#6366F1",
-    department: "finance",
-    description: "Protects Modern Phase on paper — SOWs, contracts, templates",
-    expertise: ["SOWs", "MSAs", "Contract Review", "Templates"],
-    isActive: true,
-    soulPath: "agents/carl/SOUL.md",
   },
   [AGENT_IDS.TAYLOR]: {
     agentId: AGENT_IDS.TAYLOR,
     name: "Taylor",
-    role: "Technical Lead",
+    role: "Delivery",
     emoji: "⚡",
     color: "#EF4444",
     department: "delivery",
-    description: "Makes technical calls — architecture, estimates, stack",
-    expertise: ["Architecture", "Estimation", "Tech Stack", "Code Review"],
+    description: "Owns delivery end-to-end — architecture, design, code, and QA",
+    expertise: ["Architecture", "Estimation", "Tech Stack", "Code Review", "UI/UX", "Brand Assets", "Design Review", "Design Systems"],
     isActive: true,
     soulPath: "agents/taylor/SOUL.md",
   },
-  [AGENT_IDS.DANA]: {
-    agentId: AGENT_IDS.DANA,
-    name: "Dana",
-    role: "Design Lead",
-    emoji: "🎨",
-    color: "#EC4899",
-    department: "delivery",
-    description: "Owns the look and feel — UI/UX, brand, design review",
-    expertise: ["UI/UX", "Brand Assets", "Design Review", "Design Systems"],
+  [AGENT_IDS.MAX]: {
+    agentId: AGENT_IDS.MAX,
+    name: "Max",
+    role: "Operations Director",
+    emoji: "👔",
+    color: "#1E40AF",
+    department: "management",
+    description: "Your voice-enabled point of contact — manages the team, delegates work, reports status",
+    expertise: ["Team Management", "Task Delegation", "Status Reporting", "Cross-Department Coordination"],
     isActive: true,
-    soulPath: "agents/dana/SOUL.md",
+    soulPath: "agents/max/SOUL.md",
   },
 };
 
 // ========== INTERNAL QUERIES ==========
+
+// Used by Max voice agent custom functions (no auth — internal only)
+export const INTERNAL_getAgentTasksUnauth = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+    agentId: agentIdValidator,
+    status: v.optional(taskStatusValidator),
+  },
+  handler: async (ctx, args) => {
+    let tasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.eq(q.field("orgId"), args.orgId))
+      .collect();
+
+    if (args.status) {
+      tasks = tasks.filter((t) => t.status === args.status);
+    }
+
+    return tasks.sort((a, b) => b._creationTime - a._creationTime).slice(0, 20);
+  },
+});
+
+export const INTERNAL_getProjectsUnauth = internalQuery({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentProjects")
+      .withIndex("orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+  },
+});
 
 // Used by dispatchChatMessage to read per-agent RAG collection config
 export const getAgentConfig = internalQuery({

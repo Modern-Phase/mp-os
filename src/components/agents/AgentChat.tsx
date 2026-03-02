@@ -23,6 +23,7 @@ import {
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import type { Citation } from "@/components/chat/ChatMessage";
 import { ToolCallDisplay } from "@/components/agents/ToolCallDisplay";
+import { CallStatusBanner } from "@/components/agents/CallStatusBanner";
 
 const ACCEPTED_FILE_TYPES = ".csv,.txt,.md,.json,.tsv";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -69,6 +70,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
   const createChatMessage = useMutation(api.agentChat.createChatMessage);
   const getOrCreateSession = useMutation(api.agentChat.getOrCreateSession);
   const generateUploadUrl = useMutation(api.documents.generateUploadUrl);
+  const initiateCall = useMutation(api.retellCalls.initiateCall);
 
   // Only show "thinking" for actively streaming or recent pending (last msg, < 2 min)
   const isAgentResponding = (() => {
@@ -153,6 +155,41 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
 
       const content = message.trim();
       const currentFile = attachedFile;
+
+      // Handle /call slash command
+      if (content.toLowerCase() === "/call" || content.toLowerCase().startsWith("/call ")) {
+        setMessage("");
+        setSending(true);
+        try {
+          await initiateCall({ orgId, agentId: agent.agentId });
+          // Insert a system message so the user sees feedback in chat
+          const sessionId = await getOrCreateSession({ orgId, agentId: agent.agentId });
+          await createChatMessage({
+            orgId,
+            agentId: agent.agentId,
+            content: "📞 Initiating voice call...",
+            role: "system",
+            sessionId: sessionId || undefined,
+          });
+        } catch (err: any) {
+          console.error("[AgentChat] /call failed:", err);
+          // Show error as system message
+          try {
+            const sessionId = await getOrCreateSession({ orgId, agentId: agent.agentId });
+            await createChatMessage({
+              orgId,
+              agentId: agent.agentId,
+              content: `❌ Call failed: ${err.message || "Unknown error"}`,
+              role: "system",
+              sessionId: sessionId || undefined,
+            });
+          } catch { /* ignore */ }
+        } finally {
+          setSending(false);
+        }
+        return;
+      }
+
       setMessage("");
       setAttachedFile(null);
       setFileError(null);
@@ -211,7 +248,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
         setSending(false);
       }
     },
-    [message, attachedFile, sending, orgId, agent.agentId, createChatMessage, getOrCreateSession, generateUploadUrl],
+    [message, attachedFile, sending, orgId, agent.agentId, createChatMessage, getOrCreateSession, generateUploadUrl, initiateCall],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -280,6 +317,9 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
           )}
         </div>
       </div>
+
+      {/* Call Status Banner */}
+      <CallStatusBanner orgId={orgId} agentId={agent.agentId} />
 
       {/* Messages */}
       <main className="flex-1 min-h-0 overflow-hidden relative">

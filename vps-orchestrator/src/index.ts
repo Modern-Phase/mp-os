@@ -24,6 +24,7 @@ app.use(
       const allowed = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://app.modernphase.io",
       ];
       // Also allow *.convex.site and your production domain
       if (

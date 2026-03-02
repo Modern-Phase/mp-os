@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, CheckCircle, Shield } from "lucide-react";
+import { Loader2, CheckCircle, Shield, ExternalLink } from "lucide-react";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
@@ -18,6 +18,8 @@ interface Contract {
   signedAt?: number;
   signatureData?: { name: string; agreedAt: number };
   expiresAt?: number;
+  docusealSigningUrl?: string;
+  signingMethod?: string;
 }
 
 function PublicContractPage() {
@@ -137,7 +139,26 @@ function PublicContractPage() {
           </div>
         )}
 
-        {canSign && (
+        {canSign && contract.docusealSigningUrl && (
+          <div className="border rounded-lg p-6 space-y-4 mt-8">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Sign This Contract</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This contract requires a legally-binding electronic signature via DocuSeal.
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => window.open(contract.docusealSigningUrl, "_blank")}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Sign via DocuSeal
+            </Button>
+          </div>
+        )}
+
+        {canSign && !contract.docusealSigningUrl && (
           <div className="border rounded-lg p-6 space-y-4 mt-8">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="h-5 w-5 text-primary" />

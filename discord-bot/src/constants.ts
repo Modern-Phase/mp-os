@@ -6,14 +6,10 @@
  */
 export const AGENT_MENTION_MAP: Record<string, string> = {
   larry: "larry",
-  lexi: "lexi",
-  maya: "maya",
   oliver: "oliver",
-  sam: "sam",
   fiona: "fiona",
-  carl: "carl",
   taylor: "taylor",
-  dana: "dana",
+  max: "max",
 };
 
 /**
@@ -25,6 +21,7 @@ export const DEPARTMENT_DEFAULT_AGENTS: Record<string, string> = {
   ops: "oliver",
   finance: "fiona",
   delivery: "taylor",
+  management: "max",
 };
 
 /**

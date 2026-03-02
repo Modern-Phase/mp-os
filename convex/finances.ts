@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { expenseCategoryValidator } from "./schema";
 
@@ -68,10 +69,18 @@ export const createExpense = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    return await ctx.db.insert("expenses", {
+    const expenseId = await ctx.db.insert("expenses", {
       ...args,
       createdBy: userId,
     });
+
+    // Sync to QuickBooks if connected
+    await ctx.scheduler.runAfter(0, internal.quickbooks.INTERNAL_syncExpenseToQB, {
+      orgId: args.orgId,
+      expenseId,
+    });
+
+    return expenseId;
   },
 });
 

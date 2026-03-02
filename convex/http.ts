@@ -1386,4 +1386,477 @@ http.route({
   }),
 });
 
+// ========== RETELL AI WEBHOOK ==========
+
+http.route({
+  path: "/webhooks/retell",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/retell",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { event, call } = body;
+
+      if (!event || !call?.call_id) {
+        return new Response(
+          JSON.stringify({ error: "Missing event or call_id" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Look up call record by Retell call ID
+      let callRecord = await ctx.runQuery(
+        internal.retellCalls.INTERNAL_getCallByRetellId,
+        { retellCallId: call.call_id },
+      );
+
+      // Inbound call: no pre-existing record — create one on-the-fly
+      if (!callRecord) {
+        if (event === "call_started" || event === "call_ended") {
+          try {
+            const newId = await ctx.runMutation(
+              internal.retellCalls.INTERNAL_createInboundCallRecord,
+              {
+                retellCallId: call.call_id,
+                retellAgentId: call.agent_id || undefined,
+                fromNumber: call.from_number || undefined,
+                toNumber: call.to_number || undefined,
+                metadata: call.metadata || undefined,
+              },
+            );
+            callRecord = { _id: newId } as any;
+            console.log(`[Retell Webhook] Created inbound call record for ${call.call_id}`);
+          } catch (err) {
+            console.error("[Retell Webhook] Failed to create inbound call record:", err);
+            return new Response(
+              JSON.stringify({ success: true }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            );
+          }
+        } else {
+          // call_analyzed on unknown call — log and return 200 gracefully
+          console.warn(`[Retell Webhook] No call record for ${event} on call_id: ${call.call_id}`);
+          return new Response(
+            JSON.stringify({ success: true }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      }
+
+      const recordId = callRecord!._id;
+
+      switch (event) {
+        case "call_started":
+          await ctx.runMutation(internal.retellCalls.INTERNAL_updateCallStatus, {
+            callRecordId: recordId,
+            status: "ongoing",
+            startTimestamp: call.start_timestamp || Date.now(),
+          });
+          break;
+
+        case "call_ended":
+          await ctx.runMutation(internal.retellCalls.INTERNAL_storeCallResult, {
+            callRecordId: recordId,
+            transcript: call.transcript || undefined,
+            recordingUrl: call.recording_url || undefined,
+            durationMs: call.end_timestamp && call.start_timestamp
+              ? call.end_timestamp - call.start_timestamp
+              : undefined,
+            endTimestamp: call.end_timestamp || Date.now(),
+            disconnectionReason: call.disconnection_reason || undefined,
+          });
+          break;
+
+        case "call_analyzed":
+          await ctx.runMutation(internal.retellCalls.INTERNAL_storeCallAnalysis, {
+            callRecordId: recordId,
+            summary: call.call_analysis?.call_summary || undefined,
+            sentiment: call.call_analysis?.user_sentiment || undefined,
+          });
+          break;
+
+        default:
+          console.log(`[Retell Webhook] Unhandled event: ${event}`);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    } catch (error) {
+      console.error("[Retell Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
+// ========== RETELL AI CUSTOM FUNCTIONS (Live Tool Calling) ==========
+
+http.route({
+  path: "/retell/functions",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/retell/functions",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { name, args: fnArgs, call } = body;
+
+      if (!name) {
+        return new Response(
+          JSON.stringify({ result: "Missing function name" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Resolve org context: try metadata → call record lookup → default org
+      let orgId: Id<"organizations"> | null = null;
+      let userId: Id<"users"> | null = null;
+
+      if (call?.metadata?.orgId) {
+        orgId = call.metadata.orgId as Id<"organizations">;
+        userId = (call.metadata.userId as Id<"users">) || null;
+      }
+
+      if (!orgId && call?.call_id) {
+        const callRecord = await ctx.runQuery(
+          internal.retellCalls.INTERNAL_getCallByRetellId,
+          { retellCallId: call.call_id },
+        );
+        if (callRecord) {
+          orgId = callRecord.orgId;
+          userId = callRecord.userId;
+        }
+      }
+
+      if (!orgId) {
+        const defaultCtx = await ctx.runQuery(
+          internal.retellCalls.INTERNAL_getDefaultOrgContext,
+          {},
+        );
+        if (defaultCtx) {
+          orgId = defaultCtx.orgId;
+          userId = defaultCtx.userId;
+        }
+      }
+
+      if (!orgId || !userId) {
+        return new Response(
+          JSON.stringify({ result: "Could not resolve organization context" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      let result = "";
+
+      switch (name) {
+        case "get_team_status": {
+          result = await ctx.runQuery(
+            internal.retellCalls.INTERNAL_getTeamStatus,
+            { orgId },
+          );
+          break;
+        }
+
+        case "get_agent_tasks": {
+          const agentId = fnArgs?.agent_id || fnArgs?.agentId;
+          if (!agentId) {
+            result = "Please specify which agent's tasks to check.";
+            break;
+          }
+          const tasks = await ctx.runQuery(
+            internal.agents.INTERNAL_getAgentTasksUnauth,
+            { orgId, agentId, status: fnArgs?.status },
+          );
+          if (tasks.length === 0) {
+            result = `No tasks found for ${agentId}.`;
+          } else {
+            result = tasks
+              .slice(0, 10)
+              .map((t: any) => `[${t.status}] ${t.title} (${t.priority})`)
+              .join("\n");
+          }
+          break;
+        }
+
+        case "create_task": {
+          const title = fnArgs?.title;
+          const agentId = fnArgs?.agent_id || fnArgs?.agentId;
+          if (!title || !agentId) {
+            result = "I need a task title and an agent to assign it to.";
+            break;
+          }
+          await ctx.runMutation(
+            internal.retellCalls.INTERNAL_createTaskFromMax,
+            {
+              orgId,
+              userId,
+              title,
+              description: fnArgs?.description || title,
+              agentId,
+              priority: fnArgs?.priority,
+            },
+          );
+          result = `Task "${title}" created and assigned to ${agentId}.`;
+          break;
+        }
+
+        case "get_projects": {
+          const projects = await ctx.runQuery(
+            internal.agents.INTERNAL_getProjectsUnauth,
+            { orgId },
+          );
+          if (projects.length === 0) {
+            result = "No projects found.";
+          } else {
+            result = projects
+              .map((p: any) => `${p.name} (${p.status}) — ${p.client}`)
+              .join("\n");
+          }
+          break;
+        }
+
+        case "send_agent_message": {
+          const agentId = fnArgs?.agent_id || fnArgs?.agentId;
+          const message = fnArgs?.message;
+          if (!agentId || !message) {
+            result = "I need an agent name and a message.";
+            break;
+          }
+          result = await ctx.runMutation(
+            internal.retellCalls.INTERNAL_sendAgentMessage,
+            { orgId, userId, agentId, message },
+          );
+          break;
+        }
+
+        case "get_recent_activity": {
+          result = await ctx.runQuery(
+            internal.retellCalls.INTERNAL_getRecentActivityForMax,
+            { orgId, limit: fnArgs?.limit || 10 },
+          );
+          break;
+        }
+
+        case "search_knowledge_base": {
+          const query = fnArgs?.query;
+          if (!query) {
+            result = "What should I search for? Give me a topic or question.";
+            break;
+          }
+          result = await ctx.runAction(
+            internal.retellCalls.INTERNAL_searchKnowledgeBase,
+            { orgId, userId, query, limit: fnArgs?.limit },
+          );
+          break;
+        }
+
+        case "handoff_task": {
+          const taskId = fnArgs?.task_id || fnArgs?.taskId;
+          const toAgentId = fnArgs?.to_agent_id || fnArgs?.toAgentId;
+          if (!taskId || !toAgentId) {
+            result = "I need a task ID and the agent to hand it off to.";
+            break;
+          }
+          result = await ctx.runMutation(
+            internal.retellCalls.INTERNAL_handoffTaskFromMax,
+            { orgId, taskId, toAgentId, note: fnArgs?.note },
+          );
+          break;
+        }
+
+        default:
+          result = `Unknown function: ${name}`;
+      }
+
+      // Log tool call for audit trail
+      await ctx.runMutation(internal.retellCalls.INTERNAL_logToolCall, {
+        orgId,
+        functionName: name,
+        args: fnArgs,
+        result: typeof result === "string" ? result.slice(0, 500) : JSON.stringify(result).slice(0, 500),
+        retellCallId: call?.call_id,
+      });
+
+      return new Response(
+        JSON.stringify({ result }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    } catch (error) {
+      console.error("[Retell Functions] Error:", error);
+      return new Response(
+        JSON.stringify({
+          result: `Error: ${error instanceof Error ? error.message : "Function execution failed"}`,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
+// ========== DOCUSEAL WEBHOOK ==========
+
+http.route({
+  path: "/webhooks/docuseal",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/webhooks/docuseal",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { event_type, data } = body;
+
+      if (event_type === "submission.completed" && data) {
+        const submissionId = data.submission_id || data.id;
+        const documentUrl = data.documents?.[0]?.url;
+        const submitter = data.submitters?.[0];
+
+        if (submissionId) {
+          await ctx.runMutation(internal.docuseal.INTERNAL_storeSigningResult, {
+            submissionId: Number(submissionId),
+            documentUrl,
+            signerName: submitter?.name,
+            signerEmail: submitter?.email,
+            completedAt: data.completed_at ? new Date(data.completed_at).getTime() : Date.now(),
+          });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[DocuSeal Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "Webhook processing failed",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
+// ========== QUICKBOOKS OAUTH CALLBACK ==========
+
+http.route({
+  path: "/api/oauth/qb/callback",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state");
+      const realmId = url.searchParams.get("realmId");
+
+      if (!code || !realmId) {
+        return new Response("Missing code or realmId", { status: 400 });
+      }
+
+      // Exchange code for tokens
+      await ctx.runAction(internal.quickbooks.INTERNAL_exchangeCodeForTokens, {
+        code,
+        realmId,
+        state: state || "",
+      });
+
+      // Redirect back to settings/integrations page
+      const siteUrl = process.env.SITE_URL || "http://localhost:5173";
+      return new Response(null, {
+        status: 302,
+        headers: { Location: `${siteUrl}/dashboard/settings/integrations?qb=connected` },
+      });
+    } catch (error) {
+      console.error("[QB OAuth Callback] Error:", error);
+      const siteUrl = process.env.SITE_URL || "http://localhost:5173";
+      return new Response(null, {
+        status: 302,
+        headers: { Location: `${siteUrl}/dashboard/settings/integrations?qb=error` },
+      });
+    }
+  }),
+});
+
+// ========== QUICKBOOKS WEBHOOK ==========
+
+http.route({
+  path: "/webhooks/quickbooks",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { eventNotifications } = body;
+
+      if (Array.isArray(eventNotifications)) {
+        for (const notification of eventNotifications) {
+          const { realmId, dataChangeEvent } = notification;
+          if (!dataChangeEvent?.entities) continue;
+
+          for (const entity of dataChangeEvent.entities) {
+            console.log(`[QB Webhook] ${entity.name} ${entity.operation} in realm ${realmId}`);
+            // Future: handle entity changes (invoice payment, customer update)
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[QB Webhook] Error:", error);
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : "Webhook processing failed" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }),
+});
+
 export default http;

@@ -1,31 +1,27 @@
 // Mission Control Static Dashboard
 const AGENTS = {
-    larry: { id: 'larry', name: 'Larry', role: 'Lead Generation', emoji: '🤖', color: '#3B82F6', dept: 'sales', expertise: ['Research', 'List Building'] },
-    lexi: { id: 'lexi', name: 'Lexi', role: 'Outreach & SDR', emoji: '📧', color: '#8B5CF6', dept: 'sales', expertise: ['Cold Email', 'LinkedIn'] },
-    maya: { id: 'maya', name: 'Maya', role: 'Content & Marketing', emoji: '📊', color: '#EC4899', dept: 'sales', expertise: ['Content', 'Social'] },
-    oliver: { id: 'oliver', name: 'Oliver', role: 'Operations Manager', emoji: '📋', color: '#10B981', dept: 'ops', expertise: ['Project Mgmt', 'Timelines'] },
-    sam: { id: 'sam', name: 'Sam', role: 'Scheduling', emoji: '📅', color: '#F59E0B', dept: 'ops', expertise: ['Calendar', 'Notes'] },
-    fiona: { id: 'fiona', name: 'Fiona', role: 'Finance', emoji: '💵', color: '#059669', dept: 'finance', expertise: ['Invoicing', 'Revenue'] },
-    carl: { id: 'carl', name: 'Carl', role: 'Contracts', emoji: '🤝', color: '#6366F1', dept: 'finance', expertise: ['SOWs', 'MSAs'] },
-    taylor: { id: 'taylor', name: 'Taylor', role: 'Tech Lead', emoji: '⚡', color: '#EF4444', dept: 'delivery', expertise: ['Architecture', 'Estimation'] },
-    dana: { id: 'dana', name: 'Dana', role: 'Design Lead', emoji: '🎨', color: '#EC4899', dept: 'delivery', expertise: ['UI/UX', 'Brand'] }
+    larry: { id: 'larry', name: 'Larry', role: 'Sales & Marketing', emoji: '🤖', color: '#3B82F6', dept: 'sales', expertise: ['Lead Gen', 'Outreach', 'Content', 'Social'] },
+    oliver: { id: 'oliver', name: 'Oliver', role: 'Operations', emoji: '📋', color: '#10B981', dept: 'ops', expertise: ['Project Mgmt', 'Scheduling', 'Timelines'] },
+    fiona: { id: 'fiona', name: 'Fiona', role: 'Finance & Legal', emoji: '💵', color: '#059669', dept: 'finance', expertise: ['Invoicing', 'Contracts', 'SOWs'] },
+    taylor: { id: 'taylor', name: 'Taylor', role: 'Delivery', emoji: '⚡', color: '#EF4444', dept: 'delivery', expertise: ['Architecture', 'Design', 'Code', 'QA'] },
+    max: { id: 'max', name: 'Max', role: 'Operations Director', emoji: '👔', color: '#1E40AF', dept: 'management', expertise: ['Delegation', 'Status', 'Coordination'] }
 };
 
 let tasks = [
     { id: '1', title: 'Find 10 YC W24 fintech startups', agentId: 'larry', status: 'in_progress', priority: 'high', tags: ['yc', 'fintech'], dueDate: '2026-02-20' },
-    { id: '2', title: 'Draft outreach sequence for Acme Corp', agentId: 'lexi', status: 'todo', priority: 'medium', tags: ['outreach'], handoffFrom: 'larry' },
+    { id: '2', title: 'Draft outreach sequence for Acme Corp', agentId: 'larry', status: 'todo', priority: 'medium', tags: ['outreach'] },
     { id: '3', title: 'Create StartupX MVP timeline', agentId: 'oliver', status: 'in_progress', priority: 'urgent', tags: ['project'], dueDate: '2026-02-18' },
     { id: '4', title: 'Generate ClientY milestone invoice', agentId: 'fiona', status: 'todo', priority: 'high', tags: ['invoice'] },
-    { id: '5', title: 'Review SOW for NewClient', agentId: 'carl', status: 'review', priority: 'high', tags: ['legal'] },
-    { id: '6', title: 'Write LinkedIn post about 3-week MVPs', agentId: 'maya', status: 'backlog', priority: 'low', tags: ['content'] },
-    { id: '7', title: 'Schedule kickoff with StartupX', agentId: 'sam', status: 'todo', priority: 'medium', tags: ['scheduling'] },
+    { id: '5', title: 'Review SOW for NewClient', agentId: 'fiona', status: 'review', priority: 'high', tags: ['legal'] },
+    { id: '6', title: 'Write LinkedIn post about 3-week MVPs', agentId: 'larry', status: 'backlog', priority: 'low', tags: ['content'] },
+    { id: '7', title: 'Schedule kickoff with StartupX', agentId: 'oliver', status: 'todo', priority: 'medium', tags: ['scheduling'] },
     { id: '8', title: 'Architecture review for marketplace', agentId: 'taylor', status: 'in_progress', priority: 'high', tags: ['tech'] },
-    { id: '9', title: 'Review StartupX design mockups', agentId: 'dana', status: 'review', priority: 'medium', tags: ['design'] },
+    { id: '9', title: 'Review StartupX design mockups', agentId: 'taylor', status: 'review', priority: 'medium', tags: ['design'] },
     { id: '10', title: 'Close Q1 fintech outreach campaign', agentId: 'larry', status: 'done', priority: 'high', tags: ['campaign'] }
 ];
 
 const projects = [
-    { id: '1', name: 'StartupX MVP', client: 'StartupX Inc', status: 'in_progress', progress: 15, agents: ['oliver', 'taylor', 'dana'], targetDate: '2026-03-10' },
+    { id: '1', name: 'StartupX MVP', client: 'StartupX Inc', status: 'in_progress', progress: 15, agents: ['oliver', 'taylor'], targetDate: '2026-03-10' },
     { id: '2', name: 'ClientY Phase 2', client: 'ClientY Corp', status: 'planning', progress: 0, agents: ['oliver', 'taylor'], targetDate: '2026-03-24' }
 ];
 

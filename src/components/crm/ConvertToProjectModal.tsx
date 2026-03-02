@@ -21,8 +21,7 @@ import { cn } from '@/utils/misc'
 
 // Agent emoji lookup (matches AGENT_DEFINITIONS in convex/agents.ts)
 const AGENT_EMOJI: Record<string, string> = {
-  larry: '🤖', lexi: '📧', maya: '📊', oliver: '📋',
-  sam: '📅', fiona: '💵', carl: '🤝', taylor: '⚡', dana: '🎨',
+  larry: '🤖', oliver: '📋', fiona: '💵', taylor: '⚡', max: '👔',
 }
 
 const PRIORITY_COLORS: Record<string, string> = {

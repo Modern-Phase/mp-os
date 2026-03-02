@@ -87,6 +87,32 @@ export const getEnrollments = query({
   },
 });
 
+export const getEnrollmentsByLead = query({
+  args: { leadId: v.id("crmLeads") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const enrollments = await ctx.db
+      .query("emailSequenceEnrollments")
+      .withIndex("leadId", (q: any) => q.eq("leadId", args.leadId))
+      .collect();
+
+    // Enrich with sequence name + total steps
+    const result = [];
+    for (const enrollment of enrollments) {
+      const sequence = await ctx.db.get(enrollment.sequenceId);
+      result.push({
+        ...enrollment,
+        sequenceName: sequence?.name || "Unknown",
+        totalSteps: sequence?.steps?.length || 0,
+      });
+    }
+    return result;
+  },
+});
+
 // ========== MUTATIONS ==========
 
 export const createSequence = mutation({
@@ -383,6 +409,7 @@ export const seedDefaultSequences = mutation({
     if (existing.length > 0) return 0;
 
     const defaults = [
+      // === LEAD NURTURE ===
       {
         name: "New Lead Nurture",
         steps: [
@@ -391,11 +418,81 @@ export const seedDefaultSequences = mutation({
           { delayDays: 7, subject: "Quick follow-up", body: "Hi {{name}},\n\nJust checking in — I know things get busy! If now isn't the right time, no worries. I'm here whenever you're ready to explore how we can help {{company}}.\n\nBest,\nModern Phase" },
         ],
       },
+
+      // === DISCOVERY FOLLOW-UP ===
+      {
+        name: "Discovery Call Follow-up",
+        steps: [
+          { delayDays: 1, subject: "Great chatting with you, {{name}}!", body: "Hi {{name}},\n\nThank you for taking the time to chat today! I really enjoyed learning about {{company}} and the challenges you're facing.\n\nAs discussed, here's a summary of what we covered:\n- Your current pain points and goals\n- How Modern Phase can help\n- Proposed next steps\n\nI'll be putting together a proposal based on our conversation and will have it to you within the next few days.\n\nBest,\nModern Phase" },
+          { delayDays: 3, subject: "Your proposal is on the way", body: "Hi {{name}},\n\nJust a quick update — we're finalizing the proposal for {{company}} and you should receive it shortly.\n\nIn the meantime, if you think of any additional requirements or questions, don't hesitate to reach out.\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === PROPOSAL FOLLOW-UP ===
       {
         name: "Post-Proposal Follow-up",
         steps: [
-          { delayDays: 2, subject: "Any questions about our proposal?", body: "Hi {{name}},\n\nI wanted to follow up on the proposal we sent. Do you have any questions about the scope, timeline, or investment?\n\nI'm happy to hop on a quick call to walk through anything.\n\nBest,\nModern Phase" },
-          { delayDays: 5, subject: "Proposal reminder for {{company}}", body: "Hi {{name}},\n\nJust a friendly reminder that our proposal is still open. We're excited about the opportunity to work with {{company}}.\n\nLet me know if there's anything I can help with to move forward.\n\nBest,\nModern Phase" },
+          { delayDays: 2, subject: "Any questions about our proposal?", body: "Hi {{name}},\n\nI wanted to follow up on the proposal we sent for {{company}}. Do you have any questions about the scope, timeline, or investment?\n\nI'm happy to hop on a quick call to walk through anything.\n\nBest,\nModern Phase" },
+          { delayDays: 5, subject: "Proposal update for {{company}}", body: "Hi {{name}},\n\nJust a friendly reminder that our proposal is still available. We're excited about the opportunity to work with {{company}}.\n\nIf the scope or pricing needs adjustment, I'm happy to discuss alternatives that better fit your budget.\n\nBest,\nModern Phase" },
+          { delayDays: 10, subject: "Still interested, {{name}}?", body: "Hi {{name}},\n\nI wanted to check in one last time about our proposal for {{company}}. I know decision-making takes time, and I respect that.\n\nIf the timing isn't right, no worries at all. I'll keep your details on file and we can revisit whenever you're ready.\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === CONTRACT FOLLOW-UP ===
+      {
+        name: "Contract Signing Reminder",
+        steps: [
+          { delayDays: 2, subject: "Your contract is ready for signing", body: "Hi {{name}},\n\nJust a reminder that we've sent over the contract for your review and signature. You can review and sign it directly from the link in our previous email.\n\nIf you have any questions about the terms, I'm happy to walk through them with you.\n\nBest,\nModern Phase" },
+          { delayDays: 5, subject: "Contract reminder — ready when you are", body: "Hi {{name}},\n\nI wanted to follow up on the contract we sent for {{company}}. We're looking forward to getting started!\n\nIf there are any terms you'd like to discuss or modify, please let me know. We want to make sure everything works for both parties.\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === WON ONBOARDING ===
+      {
+        name: "New Client Onboarding",
+        steps: [
+          { delayDays: 0, subject: "Welcome aboard, {{name}}! Here's what's next", body: "Hi {{name}},\n\nWelcome to Modern Phase! We're thrilled to have {{company}} on board.\n\nHere's what you can expect over the next few days:\n\n1. Project Setup (Today): We'll set up your project workspace and communication channels\n2. Kickoff Call (Within 48 hours): We'll schedule a kickoff meeting to align on priorities\n3. Development Starts: Once we're aligned, our team gets to work immediately\n\nIn the meantime, feel free to reach out with any questions.\n\nBest,\nModern Phase" },
+          { delayDays: 3, subject: "Your project is underway!", body: "Hi {{name}},\n\nQuick update — your project is officially underway! Here's what our team has been working on:\n\n- Setting up the development environment\n- Mapping out the technical architecture\n- Prioritizing the feature backlog\n\nYou'll receive weekly progress updates every Monday. If you ever want a more detailed look, just let me know.\n\nBest,\nModern Phase" },
+          { delayDays: 7, subject: "Week 1 check-in for {{company}}", body: "Hi {{name}},\n\nIt's been one week since we kicked off your project. I wanted to check in and make sure everything is meeting your expectations so far.\n\nIs there anything you'd like to adjust or prioritize differently? Your feedback is incredibly valuable, especially in these early stages.\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === LOST RE-ENGAGEMENT ===
+      {
+        name: "Lost Lead Re-engagement",
+        steps: [
+          { delayDays: 30, subject: "Checking in, {{name}}", body: "Hi {{name}},\n\nIt's been a little while since we last spoke about your project at {{company}}. I hope things are going well!\n\nSince we last talked, we've been working on some exciting projects and have refined our process even further. I'd love to share what's new and see if there's an opportunity to help.\n\nNo pressure at all — just want to stay connected.\n\nBest,\nModern Phase" },
+          { delayDays: 60, subject: "New offerings from Modern Phase", body: "Hi {{name}},\n\nI wanted to share some updates from Modern Phase that might be relevant to {{company}}:\n\n- New service packages designed for faster delivery\n- Flexible payment options (milestone-based billing)\n- Expanded team capabilities\n\nIf any of these spark interest, I'd love to reconnect. Otherwise, I'll keep you on our updates list.\n\nBest,\nModern Phase" },
+          { delayDays: 90, subject: "One last hello from Modern Phase", body: "Hi {{name}},\n\nI just wanted to reach out one more time to say that the door is always open at Modern Phase.\n\nIf {{company}} ever needs help with software development, design, or strategy, we're just an email away.\n\nWishing you all the best!\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === INVOICE FOLLOW-UP ===
+      {
+        name: "Invoice Payment Reminder",
+        steps: [
+          { delayDays: 7, subject: "Friendly payment reminder", body: "Hi {{name}},\n\nJust a friendly reminder that we have an invoice outstanding for {{company}}. If you've already sent the payment, please disregard this message.\n\nIf you have any questions about the invoice, I'm happy to help.\n\nBest,\nModern Phase" },
+          { delayDays: 14, subject: "Invoice follow-up for {{company}}", body: "Hi {{name}},\n\nI wanted to follow up on the outstanding invoice for {{company}}. If there are any issues with the invoice or payment, please let me know so we can resolve them.\n\nWe value our relationship with {{company}} and want to make sure everything is in order.\n\nBest,\nModern Phase" },
+          { delayDays: 30, subject: "Payment past due — {{company}}", body: "Hi {{name}},\n\nOur records show that the invoice for {{company}} is now past due. We'd like to resolve this as quickly as possible.\n\nIf there's an issue we can help with, or if you need to set up a payment plan, please reach out and we'll work something out.\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === POST-DELIVERY ===
+      {
+        name: "Post-Delivery Feedback & Referral",
+        steps: [
+          { delayDays: 7, subject: "How's everything working, {{name}}?", body: "Hi {{name}},\n\nIt's been a week since we delivered your project. I wanted to check in and see how everything is going.\n\nAre there any issues, questions, or tweaks you'd like us to address? We're here to make sure everything runs smoothly.\n\nBest,\nModern Phase" },
+          { delayDays: 21, subject: "Quick feedback request for {{company}}", body: "Hi {{name}},\n\nI hope you're enjoying the results of our work together! We're always looking to improve, and your feedback means a lot.\n\nWould you mind sharing:\n- What went well?\n- What could we improve?\n- Would you recommend Modern Phase to others?\n\nA quick reply is all we need. Thank you!\n\nBest,\nModern Phase" },
+          { delayDays: 45, subject: "Know anyone who could use our help?", body: "Hi {{name}},\n\nWe've really enjoyed working with {{company}} and hope you've been happy with the results.\n\nIf you know anyone who could benefit from our services — whether it's software development, design, or strategic consulting — we'd be grateful for a referral. We offer a referral bonus for any introduction that leads to a project.\n\nThank you for being a valued client!\n\nBest,\nModern Phase" },
+        ],
+      },
+
+      // === UPSELL ===
+      {
+        name: "Upsell — Ongoing Services",
+        steps: [
+          { delayDays: 60, subject: "Keeping your software in top shape", body: "Hi {{name}},\n\nNow that your project has been live for a couple of months, I wanted to reach out about ongoing support.\n\nMany of our clients benefit from a monthly retainer that includes:\n- Bug fixes and maintenance\n- Security updates\n- Performance monitoring\n- New feature development\n\nWould you be interested in learning more about how we can keep {{company}}'s software running at its best?\n\nBest,\nModern Phase" },
+          { delayDays: 90, subject: "What's next for {{company}}?", body: "Hi {{name}},\n\nAs {{company}} grows, your software needs will evolve too. We've helped many clients expand their platforms with:\n\n- Mobile app development\n- API integrations\n- Analytics dashboards\n- Automation tools\n\nI'd love to chat about your roadmap and see how we can support your next phase of growth.\n\nBest,\nModern Phase" },
         ],
       },
     ];

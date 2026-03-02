@@ -17,6 +17,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/ui/select";
 import { Loader2, Plus, FileText, Send, Trash2 } from "lucide-react";
 import siteConfig from "~/site.config";
 
@@ -64,7 +71,10 @@ function ProposalsPage() {
   }, [currentUser, orgId, orgEnsured, ensurePersonalOrg]);
 
   const proposals = useConvexQuery(api.proposals.getProposals, orgId ? { orgId } : "skip");
+  const proposalTemplates = useConvexQuery(api.proposals.getProposalTemplates);
+  const customTemplates = useConvexQuery(api.templates.getCustomTemplates, orgId ? { orgId, type: "proposal" as const } : "skip");
   const createProposal = useMutation(api.proposals.createProposal);
+  const createFromTemplate = useMutation(api.proposals.createProposalFromTemplate);
   const deleteProposal = useMutation(api.proposals.deleteProposal);
   const sendProposal = useMutation(api.proposals.sendProposal as any);
 
@@ -74,6 +84,7 @@ function ProposalsPage() {
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
 
   // Create form
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -94,6 +105,7 @@ function ProposalsPage() {
   );
 
   const resetForm = () => {
+    setSelectedTemplate("");
     setTitle("");
     setClientName("");
     setClientEmail("");
@@ -103,19 +115,31 @@ function ProposalsPage() {
   };
 
   const handleCreate = async () => {
-    if (!orgId || !title || !clientName || !clientEmail) return;
+    if (!orgId || !clientName || !clientEmail) return;
     setCreating(true);
     try {
-      await createProposal({
-        orgId,
-        title,
-        clientName,
-        clientEmail,
-        sections,
-        currency: "usd",
-        validUntil: new Date(validUntil).getTime(),
-        notes: notes || undefined,
-      });
+      if (selectedTemplate) {
+        await createFromTemplate({
+          orgId,
+          templateKey: selectedTemplate,
+          clientName,
+          clientEmail,
+          validUntil: new Date(validUntil).getTime(),
+          notes: notes || undefined,
+        });
+      } else {
+        if (!title) return;
+        await createProposal({
+          orgId,
+          title,
+          clientName,
+          clientEmail,
+          sections,
+          currency: "usd",
+          validUntil: new Date(validUntil).getTime(),
+          notes: notes || undefined,
+        });
+      }
       setCreateOpen(false);
       resetForm();
     } catch (err) {
@@ -181,9 +205,40 @@ function ProposalsPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Title</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Website Redesign Proposal" />
+                <Label>Start from Template</Label>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Custom (blank) or choose a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom (blank)</SelectItem>
+                    {proposalTemplates?.map((t: any) => (
+                      <SelectItem key={t.key} value={t.key}>
+                        {t.name} — ${t.totalValue.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                    {customTemplates && customTemplates.length > 0 && (
+                      <>
+                        {customTemplates.map((t: any) => (
+                          <SelectItem key={t._id} value={`custom:${t._id}`}>
+                            {t.name} (Custom)
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+              {!selectedTemplate || selectedTemplate === "custom" ? (
+                <div>
+                  <Label>Title</Label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Website Redesign Proposal" />
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  Template will auto-generate sections and pricing. You can edit after creation.
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Client Name</Label>
@@ -195,44 +250,48 @@ function ProposalsPage() {
                 </div>
               </div>
 
-              {sections.map((section, si) => (
-                <div key={si} className="border rounded-lg p-3 space-y-2">
-                  <Input
-                    placeholder="Section title"
-                    value={section.title}
-                    onChange={(e) => {
-                      const updated = [...sections];
-                      updated[si] = { ...updated[si], title: e.target.value };
-                      setSections(updated);
-                    }}
-                  />
-                  {section.items.map((item, ii) => (
-                    <div key={ii} className="grid grid-cols-12 gap-2 items-center">
-                      <Input className="col-span-5" placeholder="Description" value={item.description} onChange={(e) => updateSectionItem(si, ii, "description", e.target.value)} />
-                      <Input className="col-span-2" type="number" value={item.quantity} onChange={(e) => updateSectionItem(si, ii, "quantity", e.target.value)} />
-                      <Input className="col-span-2" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(si, ii, "unitPrice", e.target.value)} />
-                      <span className="col-span-2 text-sm text-right">${item.total.toFixed(2)}</span>
-                      <Button variant="ghost" size="icon" className="col-span-1" onClick={() => {
+              {(!selectedTemplate || selectedTemplate === "custom") && (
+                <>
+                  {sections.map((section, si) => (
+                    <div key={si} className="border rounded-lg p-3 space-y-2">
+                      <Input
+                        placeholder="Section title"
+                        value={section.title}
+                        onChange={(e) => {
+                          const updated = [...sections];
+                          updated[si] = { ...updated[si], title: e.target.value };
+                          setSections(updated);
+                        }}
+                      />
+                      {section.items.map((item, ii) => (
+                        <div key={ii} className="grid grid-cols-12 gap-2 items-center">
+                          <Input className="col-span-5" placeholder="Description" value={item.description} onChange={(e) => updateSectionItem(si, ii, "description", e.target.value)} />
+                          <Input className="col-span-2" type="number" value={item.quantity} onChange={(e) => updateSectionItem(si, ii, "quantity", e.target.value)} />
+                          <Input className="col-span-2" type="number" value={item.unitPrice} onChange={(e) => updateSectionItem(si, ii, "unitPrice", e.target.value)} />
+                          <span className="col-span-2 text-sm text-right">${item.total.toFixed(2)}</span>
+                          <Button variant="ghost" size="icon" className="col-span-1" onClick={() => {
+                            const updated = [...sections];
+                            updated[si] = { ...updated[si], items: updated[si].items.filter((_, i) => i !== ii) };
+                            setSections(updated);
+                          }}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button variant="ghost" size="sm" onClick={() => {
                         const updated = [...sections];
-                        updated[si] = { ...updated[si], items: updated[si].items.filter((_, i) => i !== ii) };
+                        updated[si] = { ...updated[si], items: [...updated[si].items, { description: "", quantity: 1, unitPrice: 0, total: 0 }] };
                         setSections(updated);
                       }}>
-                        <Trash2 className="h-3 w-3" />
+                        <Plus className="h-3 w-3 mr-1" /> Add Item
                       </Button>
                     </div>
                   ))}
-                  <Button variant="ghost" size="sm" onClick={() => {
-                    const updated = [...sections];
-                    updated[si] = { ...updated[si], items: [...updated[si].items, { description: "", quantity: 1, unitPrice: 0, total: 0 }] };
-                    setSections(updated);
-                  }}>
-                    <Plus className="h-3 w-3 mr-1" /> Add Item
+                  <Button variant="outline" size="sm" onClick={() => setSections([...sections, { title: "", description: "", items: [{ description: "", quantity: 1, unitPrice: 0, total: 0 }] }])}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Section
                   </Button>
-                </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={() => setSections([...sections, { title: "", description: "", items: [{ description: "", quantity: 1, unitPrice: 0, total: 0 }] }])}>
-                <Plus className="h-3 w-3 mr-1" /> Add Section
-              </Button>
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -246,7 +305,7 @@ function ProposalsPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={creating || !title || !clientName || !clientEmail}>
+                <Button onClick={handleCreate} disabled={creating || (!selectedTemplate && !title) || !clientName || !clientEmail}>
                   {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create
                 </Button>

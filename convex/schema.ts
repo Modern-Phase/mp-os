@@ -96,34 +96,34 @@ export type JobStatus = Infer<typeof jobStatusValidator>;
 // AGENT SYSTEM - Multi-agent task management
 export const AGENT_IDS = {
   LARRY: "larry",
-  LEXI: "lexi",
-  MAYA: "maya",
   OLIVER: "oliver",
-  SAM: "sam",
   FIONA: "fiona",
-  CARL: "carl",
   TAYLOR: "taylor",
-  DANA: "dana",
+  MAX: "max",
 } as const;
 
 export const agentIdValidator = v.union(
+  // Active agents
   v.literal(AGENT_IDS.LARRY),
-  v.literal(AGENT_IDS.LEXI),
-  v.literal(AGENT_IDS.MAYA),
   v.literal(AGENT_IDS.OLIVER),
-  v.literal(AGENT_IDS.SAM),
   v.literal(AGENT_IDS.FIONA),
-  v.literal(AGENT_IDS.CARL),
   v.literal(AGENT_IDS.TAYLOR),
-  v.literal(AGENT_IDS.DANA),
+  v.literal(AGENT_IDS.MAX),
+  // Legacy — kept for backward compatibility with existing data
+  v.literal("lexi"),
+  v.literal("maya"),
+  v.literal("sam"),
+  v.literal("carl"),
+  v.literal("dana"),
 );
 export type AgentId = Infer<typeof agentIdValidator>;
 
 export const AGENT_DEPARTMENTS = {
-  SALES: "sales",
-  OPS: "ops",
-  FINANCE: "finance",
-  DELIVERY: "delivery",
+  SALES: "sales",       // Larry — Sales & Marketing
+  OPS: "ops",           // Oliver — Operations
+  FINANCE: "finance",   // Fiona — Finance & Legal
+  DELIVERY: "delivery", // Taylor — Delivery
+  MANAGEMENT: "management", // Max — Management (voice)
 } as const;
 
 export const TASK_STATUSES = {
@@ -406,6 +406,35 @@ export const expenseCategoryValidator = v.union(
   v.literal("other"),
 );
 export type ExpenseCategory = Infer<typeof expenseCategoryValidator>;
+
+// TEMPLATE TYPES (for gallery)
+export const templateTypeValidator = v.union(
+  v.literal("invoice"),
+  v.literal("proposal"),
+  v.literal("contract"),
+);
+export type TemplateType = Infer<typeof templateTypeValidator>;
+
+// INTEGRATION PROVIDERS
+export const integrationProviderValidator = v.union(
+  v.literal("quickbooks"),
+);
+export type IntegrationProvider = Infer<typeof integrationProviderValidator>;
+
+export const integrationStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("expired"),
+  v.literal("disconnected"),
+  v.literal("error"),
+);
+export type IntegrationStatus = Infer<typeof integrationStatusValidator>;
+
+// SIGNING METHOD
+export const signingMethodValidator = v.union(
+  v.literal("builtin"),
+  v.literal("docuseal"),
+);
+export type SigningMethod = Infer<typeof signingMethodValidator>;
 
 const schema = defineSchema({
   users: defineTable({
@@ -1073,6 +1102,9 @@ const schema = defineSchema({
     priority: v.optional(priorityValidator),
     lastContactedAt: v.optional(v.number()),
     createdBy: v.id("users"),
+    // QuickBooks sync
+    qbCustomerId: v.optional(v.string()),
+    qbSyncedAt: v.optional(v.number()),
   })
     .index("orgId", ["orgId"])
     .index("orgId_stage", ["orgId", "stage"])
@@ -1228,6 +1260,9 @@ const schema = defineSchema({
     stripeInvoiceId: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdBy: v.id("users"),
+    // QuickBooks sync
+    qbInvoiceId: v.optional(v.string()),
+    qbSyncedAt: v.optional(v.number()),
   })
     .index("orgId", ["orgId"])
     .index("orgId_status", ["orgId", "status"])
@@ -1292,6 +1327,11 @@ const schema = defineSchema({
     accessToken: v.string(),
     templateKey: v.optional(v.string()),
     createdBy: v.id("users"),
+    // DocuSeal e-signatures
+    docusealSubmissionId: v.optional(v.number()),
+    docusealSigningUrl: v.optional(v.string()),
+    docusealDocumentUrl: v.optional(v.string()),
+    signingMethod: v.optional(signingMethodValidator),
   })
     .index("orgId", ["orgId"])
     .index("orgId_status", ["orgId", "status"])
@@ -1362,7 +1402,7 @@ const schema = defineSchema({
       v.literal("ended"),
       v.literal("error"),
     ),
-    direction: v.literal("outbound"),
+    direction: v.union(v.literal("outbound"), v.literal("inbound")),
     transcript: v.optional(v.string()),
     recordingUrl: v.optional(v.string()),
     summary: v.optional(v.string()),
@@ -1393,10 +1433,57 @@ const schema = defineSchema({
     recurring: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     createdBy: v.id("users"),
+    // QuickBooks sync
+    qbExpenseId: v.optional(v.string()),
+    qbSyncedAt: v.optional(v.number()),
   })
     .index("orgId", ["orgId"])
     .index("projectId", ["projectId"])
     .index("orgId_category", ["orgId", "category"]),
+
+  // ========== TEMPLATE GALLERY ==========
+
+  customTemplates: defineTable({
+    orgId: v.id("organizations"),
+    type: templateTypeValidator,
+    name: v.string(),
+    description: v.optional(v.string()),
+    content: v.string(), // JSON string for invoice/proposal items, markdown for contracts
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_type", ["orgId", "type"]),
+
+  // ========== INTEGRATIONS ==========
+
+  integrations: defineTable({
+    orgId: v.id("organizations"),
+    provider: integrationProviderValidator,
+    accessToken: v.string(),
+    refreshToken: v.string(),
+    tokenExpiresAt: v.number(),
+    realmId: v.optional(v.string()), // QuickBooks company ID
+    connectedAt: v.number(),
+    connectedBy: v.id("users"),
+    status: integrationStatusValidator,
+    lastSyncAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_provider", ["orgId", "provider"]),
+
+  integrationSyncMap: defineTable({
+    orgId: v.id("organizations"),
+    integrationId: v.id("integrations"),
+    localTable: v.string(),
+    localId: v.string(),
+    externalId: v.string(),
+    lastSyncedAt: v.number(),
+    syncDirection: v.union(v.literal("push"), v.literal("pull"), v.literal("both")),
+  })
+    .index("integrationId", ["integrationId"])
+    .index("orgId_localTable_localId", ["orgId", "localTable", "localId"])
+    .index("orgId_externalId", ["orgId", "externalId"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

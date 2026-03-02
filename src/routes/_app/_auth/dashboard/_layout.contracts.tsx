@@ -24,7 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/select";
-import { Loader2, Plus, ScrollText, Send, Trash2 } from "lucide-react";
+import { Loader2, Plus, ScrollText, Send, Trash2, Shield } from "lucide-react";
+import { Switch } from "@/ui/switch";
 import siteConfig from "~/site.config";
 
 export const Route = createFileRoute(
@@ -59,11 +60,15 @@ function ContractsPage() {
 
   const contracts = useConvexQuery(api.contracts.getContracts, orgId ? { orgId } : "skip");
   const templates = useConvexQuery(api.contracts.getContractTemplates);
+  const customTemplates = useConvexQuery(api.templates.getCustomTemplates, orgId ? { orgId, type: "contract" as const } : "skip");
   const createContract = useMutation(api.contracts.createContract);
+  const createFromTemplate = useMutation(api.contracts.createContractFromTemplate);
   const deleteContract = useMutation(api.contracts.deleteContract);
   const sendContract = useMutation(api.contracts.sendContract as any);
+  const isDocuSealConfigured = useConvexQuery(api.docuseal.isDocuSealConfigured);
 
   const [activeTab, setActiveTab] = useState("all");
+  const [useDocuSeal, setUseDocuSeal] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
@@ -90,17 +95,43 @@ function ContractsPage() {
   };
 
   const handleCreate = async () => {
-    if (!orgId || !title || !clientName || !clientEmail || !content) return;
+    if (!orgId || !clientName || !clientEmail) return;
     setCreating(true);
     try {
-      await createContract({
-        orgId,
-        title,
-        clientName,
-        clientEmail,
-        content,
-        templateKey: templateKey || undefined,
-      });
+      if (templateKey && templateKey.startsWith("custom:")) {
+        // Custom template — find it and use content directly
+        const customId = templateKey.replace("custom:", "");
+        const ct = customTemplates?.find((t: any) => t._id === customId);
+        if (ct) {
+          const startDate = new Date().toLocaleDateString();
+          const customContent = ct.content
+            .replace(/\{\{clientName\}\}/g, clientName)
+            .replace(/\{\{startDate\}\}/g, startDate);
+          await createContract({
+            orgId,
+            title: `${ct.name} — ${clientName}`,
+            clientName,
+            clientEmail,
+            content: customContent,
+          });
+        }
+      } else if (templateKey) {
+        await createFromTemplate({
+          orgId,
+          templateKey,
+          clientName,
+          clientEmail,
+        });
+      } else {
+        if (!title || !content) return;
+        await createContract({
+          orgId,
+          title,
+          clientName,
+          clientEmail,
+          content,
+        });
+      }
       setCreateOpen(false);
       resetForm();
     } catch (err) {
@@ -112,7 +143,7 @@ function ContractsPage() {
   const handleSend = async (contractId: Id<"contracts">) => {
     setSending(true);
     try {
-      await sendContract({ contractId });
+      await sendContract({ contractId, useDocuSeal: useDocuSeal && isDocuSealConfigured });
     } catch (err) {
       console.error("Failed to send contract:", err);
     }
@@ -127,21 +158,6 @@ function ContractsPage() {
       console.error("Failed to delete:", err);
     }
   };
-
-  // When template changes, prefill content
-  useEffect(() => {
-    if (templateKey && clientName) {
-      // Use a simple fetch to get template content — we have templates as a query
-      const templateMap: Record<string, string> = {
-        msa: "Master Service Agreement",
-        sow: "Statement of Work",
-        creative_services: "Creative Services Agreement",
-      };
-      const name = templateMap[templateKey] || templateKey;
-      setTitle(`${name} — ${clientName}`);
-      setContent(`# ${name}\n\nThis agreement is between Modern Phase and ${clientName}.\n\n[Contract content will be generated from template on the backend. Edit as needed.]`);
-    }
-  }, [templateKey, clientName]);
 
   if (!currentUser) {
     return (
@@ -179,6 +195,15 @@ function ContractsPage() {
                     {templates?.map((t: any) => (
                       <SelectItem key={t.key} value={t.key}>{t.name}</SelectItem>
                     ))}
+                    {customTemplates && customTemplates.length > 0 && (
+                      <>
+                        {customTemplates.map((t: any) => (
+                          <SelectItem key={t._id} value={`custom:${t._id}`}>
+                            {t.name} (Custom)
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -192,17 +217,25 @@ function ContractsPage() {
                   <Input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="legal@acme.com" />
                 </div>
               </div>
-              <div>
-                <Label>Title</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="MSA — Acme Corp" />
-              </div>
-              <div>
-                <Label>Contract Content (Markdown)</Label>
-                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} className="font-mono text-sm" placeholder="# Contract Title&#10;&#10;Terms and conditions..." />
-              </div>
+              {templateKey ? (
+                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  Template will auto-generate the contract with client details filled in. You can edit after creation.
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label>Title</Label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="MSA — Acme Corp" />
+                  </div>
+                  <div>
+                    <Label>Contract Content (Markdown)</Label>
+                    <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} className="font-mono text-sm" placeholder="# Contract Title&#10;&#10;Terms and conditions..." />
+                  </div>
+                </>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={creating || !title || !clientName || !clientEmail || !content}>
+                <Button onClick={handleCreate} disabled={creating || (!templateKey && !templateKey?.startsWith("custom:") && (!title || !content)) || !clientName || !clientEmail}>
                   {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create
                 </Button>
@@ -255,10 +288,22 @@ function ContractsPage() {
                       <td className="px-4 py-3 text-center">
                         <Badge className={STATUS_COLORS[c.status]}>{c.status}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{c.templateKey || "Custom"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {c.signingMethod === "docuseal" ? (
+                          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300">
+                            <Shield className="h-3 w-3 mr-1" /> DocuSeal
+                          </Badge>
+                        ) : c.templateKey || "Custom"}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         {c.status === "draft" && (
-                          <div className="flex gap-1 justify-end">
+                          <div className="flex gap-1 justify-end items-center">
+                            {isDocuSealConfigured && (
+                              <label className="flex items-center gap-1 text-xs text-muted-foreground mr-1 cursor-pointer" title="Send with DocuSeal e-signature">
+                                <Switch checked={useDocuSeal} onCheckedChange={setUseDocuSeal} className="scale-75" />
+                                <Shield className="h-3 w-3" />
+                              </label>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => handleSend(c._id)} disabled={sending}>
                               <Send className="h-3 w-3 mr-1" /> Send
                             </Button>
@@ -304,13 +349,22 @@ function ContractsPage() {
               </div>
               <DialogFooter>
                 {selectedContract.status === "draft" && (
-                  <>
+                  <div className="flex items-center gap-2 w-full justify-between">
                     <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedContract._id)}>Delete</Button>
-                    <Button onClick={() => handleSend(selectedContract._id)} disabled={sending}>
-                      {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                      Send
-                    </Button>
-                  </>
+                    <div className="flex items-center gap-2">
+                      {isDocuSealConfigured && (
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                          <Switch checked={useDocuSeal} onCheckedChange={setUseDocuSeal} />
+                          <Shield className="h-4 w-4" />
+                          <span>E-Signature</span>
+                        </label>
+                      )}
+                      <Button onClick={() => handleSend(selectedContract._id)} disabled={sending}>
+                        {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                        {useDocuSeal && isDocuSealConfigured ? "Send with DocuSeal" : "Send"}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </DialogFooter>
             </>

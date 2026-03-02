@@ -26,6 +26,7 @@ import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutWorkflowsRouteImport } from './routes/_app/_auth/dashboard/_layout.workflows'
+import { Route as AppAuthDashboardLayoutTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.templates'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutSequencesRouteImport } from './routes/_app/_auth/dashboard/_layout.sequences'
 import { Route as AppAuthDashboardLayoutProposalsRouteImport } from './routes/_app/_auth/dashboard/_layout.proposals'
@@ -41,6 +42,7 @@ import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_ap
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
 import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
+import { Route as AppAuthDashboardLayoutSettingsIntegrationsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
 import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 
 const AppRoute = AppRouteImport.update({
@@ -127,6 +129,12 @@ const AppAuthDashboardLayoutWorkflowsRoute =
   AppAuthDashboardLayoutWorkflowsRouteImport.update({
     id: '/workflows',
     path: '/workflows',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutTemplatesRoute =
+  AppAuthDashboardLayoutTemplatesRouteImport.update({
+    id: '/templates',
+    path: '/templates',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutSettingsRoute =
@@ -219,6 +227,12 @@ const AppAuthDashboardLayoutSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
+const AppAuthDashboardLayoutSettingsIntegrationsRoute =
+  AppAuthDashboardLayoutSettingsIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
+  } as any)
 const AppAuthDashboardLayoutSettingsBillingRoute =
   AppAuthDashboardLayoutSettingsBillingRouteImport.update({
     id: '/billing',
@@ -253,10 +267,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  '/dashboard/templates': typeof AppAuthDashboardLayoutTemplatesRoute
   '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
+  '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/dashboard/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -283,10 +299,12 @@ export interface FileRoutesByTo {
   '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
+  '/dashboard/templates': typeof AppAuthDashboardLayoutTemplatesRoute
   '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
+  '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -319,10 +337,12 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/_app/_auth/dashboard/_layout/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  '/_app/_auth/dashboard/_layout/templates': typeof AppAuthDashboardLayoutTemplatesRoute
   '/_app/_auth/dashboard/_layout/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
   '/_app/_auth/dashboard/_layout/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
+  '/_app/_auth/dashboard/_layout/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/_app/_auth/dashboard/_layout/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -354,10 +374,12 @@ export interface FileRouteTypes {
     | '/dashboard/proposals'
     | '/dashboard/sequences'
     | '/dashboard/settings'
+    | '/dashboard/templates'
     | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard/'
     | '/dashboard/settings/billing'
+    | '/dashboard/settings/integrations'
     | '/dashboard/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -384,10 +406,12 @@ export interface FileRouteTypes {
     | '/dashboard/projects'
     | '/dashboard/proposals'
     | '/dashboard/sequences'
+    | '/dashboard/templates'
     | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard'
     | '/dashboard/settings/billing'
+    | '/dashboard/settings/integrations'
     | '/dashboard/settings'
   id:
     | '__root__'
@@ -419,10 +443,12 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/proposals'
     | '/_app/_auth/dashboard/_layout/sequences'
     | '/_app/_auth/dashboard/_layout/settings'
+    | '/_app/_auth/dashboard/_layout/templates'
     | '/_app/_auth/dashboard/_layout/workflows'
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
     | '/_app/_auth/dashboard/_layout/settings/billing'
+    | '/_app/_auth/dashboard/_layout/settings/integrations'
     | '/_app/_auth/dashboard/_layout/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -556,6 +582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutWorkflowsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/templates': {
+      id: '/_app/_auth/dashboard/_layout/templates'
+      path: '/templates'
+      fullPath: '/dashboard/templates'
+      preLoaderRoute: typeof AppAuthDashboardLayoutTemplatesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/settings': {
       id: '/_app/_auth/dashboard/_layout/settings'
       path: '/settings'
@@ -661,6 +694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsIndexRouteImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
     }
+    '/_app/_auth/dashboard/_layout/settings/integrations': {
+      id: '/_app/_auth/dashboard/_layout/settings/integrations'
+      path: '/integrations'
+      fullPath: '/dashboard/settings/integrations'
+      preLoaderRoute: typeof AppAuthDashboardLayoutSettingsIntegrationsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
+    }
     '/_app/_auth/dashboard/_layout/settings/billing': {
       id: '/_app/_auth/dashboard/_layout/settings/billing'
       path: '/billing'
@@ -673,6 +713,7 @@ declare module '@tanstack/react-router' {
 
 interface AppAuthDashboardLayoutSettingsRouteChildren {
   AppAuthDashboardLayoutSettingsBillingRoute: typeof AppAuthDashboardLayoutSettingsBillingRoute
+  AppAuthDashboardLayoutSettingsIntegrationsRoute: typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   AppAuthDashboardLayoutSettingsIndexRoute: typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 
@@ -680,6 +721,8 @@ const AppAuthDashboardLayoutSettingsRouteChildren: AppAuthDashboardLayoutSetting
   {
     AppAuthDashboardLayoutSettingsBillingRoute:
       AppAuthDashboardLayoutSettingsBillingRoute,
+    AppAuthDashboardLayoutSettingsIntegrationsRoute:
+      AppAuthDashboardLayoutSettingsIntegrationsRoute,
     AppAuthDashboardLayoutSettingsIndexRoute:
       AppAuthDashboardLayoutSettingsIndexRoute,
   }
@@ -704,6 +747,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutProposalsRoute: typeof AppAuthDashboardLayoutProposalsRoute
   AppAuthDashboardLayoutSequencesRoute: typeof AppAuthDashboardLayoutSequencesRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
+  AppAuthDashboardLayoutTemplatesRoute: typeof AppAuthDashboardLayoutTemplatesRoute
   AppAuthDashboardLayoutWorkflowsRoute: typeof AppAuthDashboardLayoutWorkflowsRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
 }
@@ -726,6 +770,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutSequencesRoute: AppAuthDashboardLayoutSequencesRoute,
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
+    AppAuthDashboardLayoutTemplatesRoute: AppAuthDashboardLayoutTemplatesRoute,
     AppAuthDashboardLayoutWorkflowsRoute: AppAuthDashboardLayoutWorkflowsRoute,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
   }

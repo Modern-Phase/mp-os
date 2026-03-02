@@ -13,7 +13,7 @@ import { Id } from "~/convex/_generated/dataModel";
 import { Button } from "@/ui/button";
 import { ScrollArea } from "@/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
-import { LayoutGrid, Users, Plus, RefreshCw, Loader2, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { LayoutGrid, Users, Plus, RefreshCw, Loader2, PanelRightClose, PanelRightOpen, Phone } from "lucide-react";
 import { cn } from "@/utils/misc";
 import { InstanceCard } from "@/components/agents/InstanceCard";
 import { TaskBoard } from "@/components/agents/TaskBoard";
@@ -26,6 +26,9 @@ import { AgentHealthDashboard } from "@/components/agents/AgentHealthDashboard";
 import { GlobalContextPanel } from "@/components/agents/GlobalContextPanel";
 import { VpsConnectionStatus } from "@/components/agents/VpsConnectionStatus";
 import { InstanceCreateWizard } from "@/components/agents/InstanceCreateWizard";
+import { CallMaxButton } from "@/components/agents/CallMaxButton";
+import { CallHistory } from "@/components/agents/CallHistory";
+import { CallStatusBanner } from "@/components/agents/CallStatusBanner";
 import siteConfig from "~/site.config";
 
 export const Route = createFileRoute("/_app/_auth/dashboard/_layout/")({
@@ -162,6 +165,7 @@ function MissionControlPage() {
         </div>
 
         <div className="flex items-center gap-4">
+          {orgId && <CallMaxButton orgId={orgId} />}
           <VpsConnectionStatus />
           <div className="text-sm text-muted-foreground">
             {activeCount}/{allAgents.length} Online
@@ -183,6 +187,9 @@ function MissionControlPage() {
           </Button>
         </div>
       </header>
+
+      {/* Active Call Banner */}
+      {orgId && <CallStatusBanner orgId={orgId} />}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -357,11 +364,20 @@ function MissionControlPage() {
                 )}
               >
                 {rightPanelOpen && (
-                  <GlobalContextPanel
-                    orgId={orgId}
-                    projects={projects || []}
-                    activity={recentActivity || []}
-                  />
+                  <div className="space-y-6">
+                    <GlobalContextPanel
+                      orgId={orgId}
+                      projects={projects || []}
+                      activity={recentActivity || []}
+                    />
+                    <div>
+                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        Recent Calls
+                      </h3>
+                      <CallHistory orgId={orgId} limit={5} />
+                    </div>
+                  </div>
                 )}
               </aside>
             </>

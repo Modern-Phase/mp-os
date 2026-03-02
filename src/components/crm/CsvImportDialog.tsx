@@ -133,7 +133,7 @@ const HEADER_ALIASES: Record<string, LeadField> = {
 
 const VALID_STAGES = new Set(Object.values(PIPELINE_STAGES))
 const VALID_SOURCES = new Set(Object.values(LEAD_SOURCES))
-const VALID_AGENTS = new Set(Object.values(AGENT_IDS))
+const VALID_AGENTS: Set<string> = new Set(Object.values(AGENT_IDS))
 
 // ── Helpers ──
 
@@ -194,7 +194,7 @@ function validateRow(
       message: `Invalid stage: "${mapped.stage}". Valid: ${[...VALID_STAGES].join(', ')}`,
     })
   }
-  if (mapped.assignedAgent && !VALID_AGENTS.has(mapped.assignedAgent as AgentId)) {
+  if (mapped.assignedAgent && !VALID_AGENTS.has(mapped.assignedAgent)) {
     errors.push({
       row: rowIndex,
       field: 'assignedAgent',

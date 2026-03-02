@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { pipelineStageValidator, leadSourceValidator, crmActivityTypeValidator, agentIdValidator, AgentId } from "./schema";
+import { pipelineStageValidator, leadSourceValidator, crmActivityTypeValidator, agentIdValidator, AgentId, companySizeValidator, priorityValidator } from "./schema";
 import { getQuickWinTemplate } from "./quickWinTemplates";
 
 // ========== AUTH HELPER ==========
@@ -318,6 +318,12 @@ export const createLead = mutation({
       });
     }
 
+    // Sync to QuickBooks if connected
+    await ctx.scheduler.runAfter(0, internal.quickbooks.INTERNAL_syncCustomerToQB, {
+      orgId: args.orgId,
+      leadId,
+    });
+
     return leadId;
   },
 });
@@ -341,6 +347,12 @@ export const updateLead = mutation({
     assignedAgent: v.optional(agentIdValidator),
     tags: v.optional(v.array(v.string())),
     lostReason: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    companySize: v.optional(companySizeValidator),
+    timezone: v.optional(v.string()),
+    budget: v.optional(v.number()),
+    priority: v.optional(priorityValidator),
+    lastContactedAt: v.optional(v.number()),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -368,6 +380,12 @@ export const updateLead = mutation({
       userId,
       agentId: args.assignedAgent || lead.assignedAgent,
       timestamp: Date.now(),
+    });
+
+    // Sync to QuickBooks if connected
+    await ctx.scheduler.runAfter(0, internal.quickbooks.INTERNAL_syncCustomerToQB, {
+      orgId: lead.orgId,
+      leadId: args.leadId,
     });
 
     return true;

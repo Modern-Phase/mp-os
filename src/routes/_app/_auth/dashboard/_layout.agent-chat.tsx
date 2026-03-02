@@ -78,7 +78,7 @@ function AgentChatPage() {
             <div className="text-center">
               <span className="text-6xl mb-4 block">👋</span>
               <p className="text-lg font-medium">Select an agent to start chatting</p>
-              <p className="text-sm">Choose from the sidebar to talk to Larry, Lexi, Maya, and the team</p>
+              <p className="text-sm">Choose from the sidebar to talk to Larry, Oliver, Fiona, or Taylor</p>
             </div>
           </div>
         )}

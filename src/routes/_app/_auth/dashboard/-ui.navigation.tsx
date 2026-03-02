@@ -17,6 +17,7 @@ import {
   ChevronsRight,
   DollarSign,
   MessageSquare,
+  LayoutTemplate,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
@@ -64,6 +65,7 @@ const navGroups: NavGroup[] = [
       { label: "Invoices", path: "/dashboard/invoices", icon: Receipt },
       { label: "Proposals", path: "/dashboard/proposals", icon: FileText },
       { label: "Contracts", path: "/dashboard/contracts", icon: ScrollText },
+      { label: "Templates", path: "/dashboard/templates", icon: LayoutTemplate },
     ],
   },
   {
