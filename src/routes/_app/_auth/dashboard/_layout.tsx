@@ -23,10 +23,12 @@ function DashboardLayout() {
     );
   }
   return (
-    <div className="flex min-h-[100vh] w-full flex-col bg-secondary dark:bg-black">
+    <div className="flex min-h-[100vh] w-full bg-secondary dark:bg-black">
       <Navigation user={user} />
-      <Header />
-      <Outlet />
+      <div className="flex flex-1 flex-col min-w-0">
+        <Header />
+        <Outlet />
+      </div>
     </div>
   );
 }

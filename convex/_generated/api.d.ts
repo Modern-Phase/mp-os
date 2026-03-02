@@ -33,6 +33,7 @@ import type * as email_templates_proposalEmail from "../email/templates/proposal
 import type * as email_templates_subscriptionEmail from "../email/templates/subscriptionEmail.js";
 import type * as emailSequences from "../emailSequences.js";
 import type * as env from "../env.js";
+import type * as finances from "../finances.js";
 import type * as gatewayIntegration from "../gatewayIntegration.js";
 import type * as gdpr from "../gdpr.js";
 import type * as helicone from "../helicone.js";
@@ -56,6 +57,7 @@ import type * as ragLarge from "../ragLarge.js";
 import type * as ragLargeMutations from "../ragLargeMutations.js";
 import type * as ragProcess from "../ragProcess.js";
 import type * as rateLimit from "../rateLimit.js";
+import type * as retellCalls from "../retellCalls.js";
 import type * as stripe from "../stripe.js";
 import type * as usage from "../usage.js";
 import type * as utils_auth from "../utils/auth.js";
@@ -95,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   "email/templates/subscriptionEmail": typeof email_templates_subscriptionEmail;
   emailSequences: typeof emailSequences;
   env: typeof env;
+  finances: typeof finances;
   gatewayIntegration: typeof gatewayIntegration;
   gdpr: typeof gdpr;
   helicone: typeof helicone;
@@ -118,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   ragLargeMutations: typeof ragLargeMutations;
   ragProcess: typeof ragProcess;
   rateLimit: typeof rateLimit;
+  retellCalls: typeof retellCalls;
   stripe: typeof stripe;
   usage: typeof usage;
   "utils/auth": typeof utils_auth;

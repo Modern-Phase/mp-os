@@ -160,6 +160,24 @@ export const priorityValidator = v.union(
 );
 export type Priority = Infer<typeof priorityValidator>;
 
+// CRM - Company sizes
+export const COMPANY_SIZES = {
+  SOLO: "solo",
+  STARTUP: "startup",
+  SMALL: "small",
+  MEDIUM: "medium",
+  ENTERPRISE: "enterprise",
+} as const;
+
+export const companySizeValidator = v.union(
+  v.literal(COMPANY_SIZES.SOLO),
+  v.literal(COMPANY_SIZES.STARTUP),
+  v.literal(COMPANY_SIZES.SMALL),
+  v.literal(COMPANY_SIZES.MEDIUM),
+  v.literal(COMPANY_SIZES.ENTERPRISE),
+);
+export type CompanySize = Infer<typeof companySizeValidator>;
+
 // CRM - Pipeline and lead management
 export const PIPELINE_STAGES = {
   NEW_LEAD: "new_lead",
@@ -369,6 +387,25 @@ export const PROJECT_STATUSES = {
   REVIEW: "review",
   DELIVERED: "delivered",
 } as const;
+
+// EXPENSE CATEGORIES
+export const EXPENSE_CATEGORIES = {
+  LABOR: "labor",
+  TOOLS: "tools",
+  HOSTING: "hosting",
+  SERVICES: "services",
+  MARKETING: "marketing",
+  OTHER: "other",
+} as const;
+export const expenseCategoryValidator = v.union(
+  v.literal("labor"),
+  v.literal("tools"),
+  v.literal("hosting"),
+  v.literal("services"),
+  v.literal("marketing"),
+  v.literal("other"),
+);
+export type ExpenseCategory = Infer<typeof expenseCategoryValidator>;
 
 const schema = defineSchema({
   users: defineTable({
@@ -762,6 +799,9 @@ const schema = defineSchema({
     targetDate: v.number(),
     agents: v.array(agentIdValidator),
     progress: v.number(),
+    budget: v.optional(v.number()),
+    estimatedHours: v.optional(v.number()),
+    hourlyRate: v.optional(v.number()),
     createdBy: v.id("users"),
   })
     .index("orgId", ["orgId"])
@@ -1026,6 +1066,12 @@ const schema = defineSchema({
     projectId: v.optional(v.id("agentProjects")),
     closedAt: v.optional(v.number()),
     lostReason: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    companySize: v.optional(companySizeValidator),
+    timezone: v.optional(v.string()),
+    budget: v.optional(v.number()),
+    priority: v.optional(priorityValidator),
+    lastContactedAt: v.optional(v.number()),
     createdBy: v.id("users"),
   })
     .index("orgId", ["orgId"])
@@ -1298,6 +1344,59 @@ const schema = defineSchema({
     .index("sequenceId", ["sequenceId"])
     .index("leadId", ["leadId"])
     .index("status_nextSendAt", ["status", "nextSendAt"]),
+
+  // ========== VOICE CALLS (Retell AI) ==========
+
+  retellCalls: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    agentId: v.optional(v.string()), // agent chat context (if initiated from agent chat)
+    retellCallId: v.optional(v.string()), // Retell's call ID (set after API responds)
+    retellAgentId: v.string(), // Retell agent used for the call
+    fromNumber: v.string(),
+    toNumber: v.string(),
+    status: v.union(
+      v.literal("initiating"),
+      v.literal("registered"),
+      v.literal("ongoing"),
+      v.literal("ended"),
+      v.literal("error"),
+    ),
+    direction: v.literal("outbound"),
+    transcript: v.optional(v.string()),
+    recordingUrl: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    sentiment: v.optional(v.string()),
+    durationMs: v.optional(v.number()),
+    startTimestamp: v.optional(v.number()),
+    endTimestamp: v.optional(v.number()),
+    disconnectionReason: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("orgId", ["orgId"])
+    .index("retellCallId", ["retellCallId"])
+    .index("userId", ["userId"])
+    .index("orgId_status", ["orgId", "status"]),
+
+  // ========== EXPENSES (Profitability Tracking) ==========
+  expenses: defineTable({
+    orgId: v.id("organizations"),
+    projectId: v.optional(v.id("agentProjects")),
+    leadId: v.optional(v.id("crmLeads")),
+    category: expenseCategoryValidator,
+    description: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    date: v.number(), // timestamp
+    vendor: v.optional(v.string()),
+    recurring: v.optional(v.boolean()),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("orgId", ["orgId"])
+    .index("projectId", ["projectId"])
+    .index("orgId_category", ["orgId", "category"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

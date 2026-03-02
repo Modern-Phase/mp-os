@@ -33,6 +33,7 @@ import { Route as AppAuthDashboardLayoutProjectsRouteImport } from './routes/_ap
 import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
 import { Route as AppAuthDashboardLayoutInvoicesRouteImport } from './routes/_app/_auth/dashboard/_layout.invoices'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
+import { Route as AppAuthDashboardLayoutFinancesRouteImport } from './routes/_app/_auth/dashboard/_layout.finances'
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCrmRouteImport } from './routes/_app/_auth/dashboard/_layout.crm'
 import { Route as AppAuthDashboardLayoutContractsRouteImport } from './routes/_app/_auth/dashboard/_layout.contracts'
@@ -170,6 +171,12 @@ const AppAuthDashboardLayoutGdprRoute =
     path: '/gdpr',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutFinancesRoute =
+  AppAuthDashboardLayoutFinancesRouteImport.update({
+    id: '/finances',
+    path: '/finances',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutDocumentsRoute =
   AppAuthDashboardLayoutDocumentsRouteImport.update({
     id: '/documents',
@@ -238,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
+  '/dashboard/finances': typeof AppAuthDashboardLayoutFinancesRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
+  '/dashboard/finances': typeof AppAuthDashboardLayoutFinancesRoute
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -302,6 +311,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/_app/_auth/dashboard/_layout/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
+  '/_app/_auth/dashboard/_layout/finances': typeof AppAuthDashboardLayoutFinancesRoute
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/_app/_auth/dashboard/_layout/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
   '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
+    | '/dashboard/finances'
     | '/dashboard/gdpr'
     | '/dashboard/invoices'
     | '/dashboard/mission-control'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
+    | '/dashboard/finances'
     | '/dashboard/gdpr'
     | '/dashboard/invoices'
     | '/dashboard/mission-control'
@@ -399,6 +411,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/contracts'
     | '/_app/_auth/dashboard/_layout/crm'
     | '/_app/_auth/dashboard/_layout/documents'
+    | '/_app/_auth/dashboard/_layout/finances'
     | '/_app/_auth/dashboard/_layout/gdpr'
     | '/_app/_auth/dashboard/_layout/invoices'
     | '/_app/_auth/dashboard/_layout/mission-control'
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutGdprRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/finances': {
+      id: '/_app/_auth/dashboard/_layout/finances'
+      path: '/finances'
+      fullPath: '/dashboard/finances'
+      preLoaderRoute: typeof AppAuthDashboardLayoutFinancesRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/documents': {
       id: '/_app/_auth/dashboard/_layout/documents'
       path: '/documents'
@@ -676,6 +696,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutContractsRoute: typeof AppAuthDashboardLayoutContractsRoute
   AppAuthDashboardLayoutCrmRoute: typeof AppAuthDashboardLayoutCrmRoute
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
+  AppAuthDashboardLayoutFinancesRoute: typeof AppAuthDashboardLayoutFinancesRoute
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
   AppAuthDashboardLayoutInvoicesRoute: typeof AppAuthDashboardLayoutInvoicesRoute
   AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
@@ -695,6 +716,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutContractsRoute: AppAuthDashboardLayoutContractsRoute,
     AppAuthDashboardLayoutCrmRoute: AppAuthDashboardLayoutCrmRoute,
     AppAuthDashboardLayoutDocumentsRoute: AppAuthDashboardLayoutDocumentsRoute,
+    AppAuthDashboardLayoutFinancesRoute: AppAuthDashboardLayoutFinancesRoute,
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
     AppAuthDashboardLayoutInvoicesRoute: AppAuthDashboardLayoutInvoicesRoute,
     AppAuthDashboardLayoutMissionControlRoute:

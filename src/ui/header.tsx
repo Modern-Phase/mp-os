@@ -12,7 +12,7 @@ export function Header() {
 
   return (
     <header className="z-10 flex w-full flex-col border-b border-border bg-card/50 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between py-8 px-4 lg:px-6">
+      <div className="flex w-full items-center justify-between py-8 px-4 lg:px-6">
         <div className="flex flex-col items-start gap-2">
           <h1 className="text-2xl lg:text-3xl font-semibold text-foreground">
             {routeContext?.headerTitle}
