@@ -16,7 +16,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   DollarSign,
-  Bell,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
