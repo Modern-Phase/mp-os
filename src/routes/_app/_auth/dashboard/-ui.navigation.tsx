@@ -16,6 +16,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   DollarSign,
+  MessageSquare,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
@@ -76,6 +77,7 @@ const navGroups: NavGroup[] = [
     label: "AI",
     items: [
       { label: "Agent Chat", path: "/dashboard/agent-chat", icon: Bot },
+      { label: "AI Chat", path: "/chat", icon: MessageSquare },
     ],
   },
 ];
