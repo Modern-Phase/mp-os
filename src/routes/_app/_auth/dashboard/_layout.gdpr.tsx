@@ -126,7 +126,7 @@ function GdprRequests() {
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+    <div className="container mx-auto py-8 px-4 space-y-6">
       {/* User Information */}
       <Card>
         <CardHeader>

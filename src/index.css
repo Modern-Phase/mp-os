@@ -3,7 +3,7 @@
  * @see https://tailwindcss.com/docs/guides/vite
  * @see https://ui.shadcn.com
  */
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -12,23 +12,23 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 230 25% 10%;
+    --foreground: 230 20% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 10%;
+    --card-foreground: 230 20% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 10%;
+    --popover-foreground: 230 20% 12%;
     --primary: 38 92% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 96%;
-    --secondary-foreground: 230 25% 10%;
-    --muted: 220 15% 96%;
-    --muted-foreground: 220 10% 45%;
-    --accent: 220 15% 96%;
-    --accent-foreground: 230 25% 10%;
+    --secondary: 220 20% 97%;
+    --secondary-foreground: 230 20% 12%;
+    --muted: 220 20% 97%;
+    --muted-foreground: 220 10% 40%;
+    --accent: 220 20% 97%;
+    --accent-foreground: 230 20% 12%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
     --ring: 38 92% 50%;
     --radius: 0.5rem;
     --muted-grid: rgba(0, 0, 0, 0.06);
@@ -74,12 +74,14 @@
 }
 
 body {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.6;
   font-weight: 400;
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
 a {

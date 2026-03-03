@@ -99,7 +99,7 @@ export function AnalyticsPage() {
 
   return (
     <div className="flex-1 p-6">
-      <div className="mx-auto max-w-7xl">
+      <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Analytics</h1>

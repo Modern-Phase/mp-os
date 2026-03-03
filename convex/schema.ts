@@ -411,6 +411,7 @@ export type TemplateType = Infer<typeof templateTypeValidator>;
 // INTEGRATION PROVIDERS
 export const integrationProviderValidator = v.union(
   v.literal("quickbooks"),
+  v.literal("github"),
 );
 export type IntegrationProvider = Infer<typeof integrationProviderValidator>;
 
@@ -1478,6 +1479,21 @@ const schema = defineSchema({
     .index("integrationId", ["integrationId"])
     .index("orgId_localTable_localId", ["orgId", "localTable", "localId"])
     .index("orgId_externalId", ["orgId", "externalId"]),
+
+  // GitHub repos tracked per organization
+  githubRepos: defineTable({
+    orgId: v.id("organizations"),
+    repoFullName: v.string(),
+    repoUrl: v.string(),
+    description: v.optional(v.string()),
+    defaultBranch: v.string(),
+    isPrivate: v.boolean(),
+    linkedProjectId: v.optional(v.id("agentProjects")),
+    addedBy: v.id("users"),
+    addedAt: v.number(),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_repoFullName", ["orgId", "repoFullName"]),
 
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({

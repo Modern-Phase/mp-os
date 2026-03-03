@@ -28,3 +28,6 @@ export const QB_CLIENT_ID = process.env.QB_CLIENT_ID;
 export const QB_CLIENT_SECRET = process.env.QB_CLIENT_SECRET;
 export const QB_REDIRECT_URI = process.env.QB_REDIRECT_URI;
 export const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT; // "sandbox" | "production"
+
+// GitHub (optional fallback PAT)
+export const GITHUB_TOKEN = process.env.GITHUB_TOKEN;

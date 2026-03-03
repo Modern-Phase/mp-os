@@ -5,7 +5,8 @@ import { api } from "~/convex/_generated/api";
 import { Id } from "~/convex/_generated/dataModel";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
-import { Loader2, Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { Loader2, Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, XCircle, GitBranch } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import siteConfig from "~/site.config";
 
 export const Route = createFileRoute(
@@ -213,6 +214,78 @@ function IntegrationsSettingsPage() {
           </div>
         )}
       </div>
+
+      {/* GitHub Card */}
+      <GitHubIntegrationCard orgId={orgId} />
+    </div>
+  );
+}
+
+function GitHubIntegrationCard({ orgId }: { orgId?: Id<"organizations"> }) {
+  const ghConnection = useConvexQuery(api.github.getConnection, orgId ? { orgId } : "skip");
+  const disconnectGitHub = useMutation(api.github.disconnectGitHub);
+
+  const ghStatus = ghConnection?.status || null;
+  const statusConfig = ghStatus ? STATUS_CONFIG[ghStatus] : null;
+
+  const handleDisconnect = async () => {
+    if (!orgId) return;
+    try {
+      await disconnectGitHub({ orgId });
+    } catch (err) {
+      console.error("Failed to disconnect GitHub:", err);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <GitBranch className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+          </div>
+          <div>
+            <h3 className="font-medium">GitHub</h3>
+            <p className="text-sm text-muted-foreground">Track repos, commits, PRs, and issues</p>
+          </div>
+        </div>
+        {statusConfig && (
+          <Badge className={statusConfig.color}>
+            <statusConfig.icon className="h-3 w-3 mr-1" />
+            {statusConfig.label}
+          </Badge>
+        )}
+      </div>
+
+      {ghStatus === "active" ? (
+        <div className="space-y-3">
+          <div className="text-sm">
+            <span className="text-muted-foreground">Connected: </span>
+            <span>{ghConnection?.connectedAt ? new Date(ghConnection.connectedAt).toLocaleDateString() : "—"}</span>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/dashboard/github" className="text-sm text-primary hover:underline">
+              Manage Repos →
+            </Link>
+            <div className="flex-1" />
+            <Button variant="destructive" size="sm" onClick={handleDisconnect}>
+              <Unlink className="h-4 w-4 mr-1" /> Disconnect
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            Connect your GitHub account with a Personal Access Token to track repos, view commits, PRs, and issues.
+          </div>
+          <Link to="/dashboard/github">
+            <Button>
+              <Link2 className="h-4 w-4 mr-2" />
+              Connect GitHub
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

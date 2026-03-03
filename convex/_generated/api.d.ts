@@ -37,6 +37,7 @@ import type * as env from "../env.js";
 import type * as finances from "../finances.js";
 import type * as gatewayIntegration from "../gatewayIntegration.js";
 import type * as gdpr from "../gdpr.js";
+import type * as github from "../github.js";
 import type * as helicone from "../helicone.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   finances: typeof finances;
   gatewayIntegration: typeof gatewayIntegration;
   gdpr: typeof gdpr;
+  github: typeof github;
   helicone: typeof helicone;
   http: typeof http;
   init: typeof init;

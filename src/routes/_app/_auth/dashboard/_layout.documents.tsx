@@ -275,9 +275,9 @@ function DocumentsPage() {
   );
 
   return (
-    <div className="flex-1 p-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="h-full flex flex-col p-6 min-h-0">
+      <div className="w-full flex flex-col flex-1 min-h-0">
+        <div className="mb-6 flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-2xl font-bold">Documents</h1>
             <p className="text-muted-foreground text-sm">
@@ -331,15 +331,15 @@ function DocumentsPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1 h-fit">
+        <div className="grid gap-6 lg:grid-cols-3 flex-1 min-h-0">
+          <Card className="lg:col-span-1 flex flex-col min-h-0">
             <CardHeader className="py-4">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Folder className="h-4 w-4" /> Collections
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-2">
-              <ScrollArea className="h-[500px]">
+            <CardContent className="p-2 flex-1 min-h-0">
+              <ScrollArea className="h-full">
                 {collections?.map((c) => (
                   <div
                     key={c._id}
@@ -375,7 +375,7 @@ function DocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 flex flex-col min-h-0">
             <CardHeader className="py-4 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-bold">
                 {selectedCollection
@@ -496,8 +496,8 @@ function DocumentsPage() {
                 </Dialog>
               )}
             </CardHeader>
-            <CardContent className="p-0 border-t">
-              <ScrollArea className="h-[500px]">
+            <CardContent className="p-0 border-t flex-1 min-h-0">
+              <ScrollArea className="h-full">
                 {documents?.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                     <FileText className="h-12 w-12 opacity-10 mb-4" />

@@ -71,8 +71,18 @@ const config = {
           "radial-gradient(at 40% 20%, hsl(var(--primary) / 0.15) 0px, transparent 50%), radial-gradient(at 80% 0%, hsl(220 15% 15% / 0.15) 0px, transparent 50%), radial-gradient(at 0% 50%, hsl(var(--primary) / 0.1) 0px, transparent 50%)",
       },
       fontFamily: {
-        sans: ["Outfit", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
         display: ["Outfit", "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        xs: ["0.8125rem", { lineHeight: "1.385rem" }],
+        sm: ["0.9375rem", { lineHeight: "1.5rem" }],
+        base: ["1rem", { lineHeight: "1.625rem" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],
+        xl: ["1.3125rem", { lineHeight: "1.875rem" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],
+        "3xl": ["1.875rem", { lineHeight: "2.375rem" }],
+        "4xl": ["2.25rem", { lineHeight: "2.75rem" }],
       },
       borderRadius: {
         lg: "var(--radius)",

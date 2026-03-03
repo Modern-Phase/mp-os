@@ -17,17 +17,19 @@ function DashboardLayout() {
 
   if (!user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-secondary dark:bg-black">
+      <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-black">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
   return (
-    <div className="flex min-h-[100vh] w-full bg-secondary dark:bg-black">
+    <div className="flex h-screen w-full bg-white dark:bg-black overflow-hidden">
       <Navigation user={user} />
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0">
         <Header />
-        <Outlet />
+        <main className="flex-1 min-h-0 overflow-y-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

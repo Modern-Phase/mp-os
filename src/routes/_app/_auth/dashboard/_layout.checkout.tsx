@@ -36,7 +36,7 @@ export default function DashboardCheckout() {
 
   return (
     <div className="flex h-full w-full bg-secondary px-6 py-8 dark:bg-black">
-      <div className="z-10 mx-auto flex h-full w-full max-w-screen-xl gap-12">
+      <div className="z-10 flex h-full w-full gap-12">
         <div className="flex w-full flex-col rounded-lg border border-border bg-card dark:bg-black">
           <div className="flex w-full flex-col rounded-lg p-6">
             <div className="flex flex-col gap-2">
