@@ -263,10 +263,10 @@ function FinancesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Project (optional)</Label>
-                <Select value={projectId} onValueChange={setProjectId}>
+                <Select value={projectId || "none"} onValueChange={(v) => setProjectId(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="No project" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {(projects ?? []).map((p: any) => (
                       <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
                     ))}
