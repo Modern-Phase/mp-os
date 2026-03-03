@@ -435,6 +435,22 @@ export const getVpsInstances = query({
   },
 });
 
+// Cleanup: delete stale VPS instance records by agentId
+export const INTERNAL_deleteVpsInstance = internalMutation({
+  args: { agentId: v.string() },
+  handler: async (ctx, args) => {
+    const instance = await ctx.db
+      .query("vpsInstances")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .unique();
+    if (instance) {
+      await ctx.db.delete(instance._id);
+      return `Deleted vpsInstance for ${args.agentId}`;
+    }
+    return `No vpsInstance found for ${args.agentId}`;
+  },
+});
+
 export const getVpsInstance = query({
   args: { agentId: v.string() },
   handler: async (ctx, args) => {
