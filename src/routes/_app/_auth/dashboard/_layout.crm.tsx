@@ -212,7 +212,8 @@ function CrmPage() {
                   <SelectContent>
                     {agents.map((agent: any) => (
                       <SelectItem key={agent.agentId} value={agent.agentId}>
-                        {agent.emoji} {agent.name}
+                        <span>{agent.emoji} {agent.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{agent.role}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

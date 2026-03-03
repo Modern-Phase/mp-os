@@ -275,7 +275,7 @@ export const createTask = mutation({
     orgId: v.id("organizations"),
     title: v.string(),
     description: v.string(),
-    agentId: agentIdValidator,
+    agentId: v.optional(agentIdValidator),
     priority: v.optional(priorityValidator),
     dueDate: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
@@ -302,14 +302,16 @@ export const createTask = mutation({
       projectId: args.projectId,
     });
 
-    await ctx.db.insert("agentActivity", {
-      orgId: args.orgId,
-      agentId: args.agentId,
-      action: "task_created",
-      target: args.title,
-      taskId,
-      timestamp: Date.now(),
-    });
+    if (args.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: args.orgId,
+        agentId: args.agentId,
+        action: "task_created",
+        target: args.title,
+        taskId,
+        timestamp: Date.now(),
+      });
+    }
 
     return taskId;
   },
@@ -333,18 +335,20 @@ export const updateTaskStatus = mutation({
       completedAt: args.status === "done" ? Date.now() : undefined,
     });
 
-    await ctx.db.insert("agentActivity", {
-      orgId: task.orgId,
-      agentId: task.agentId,
-      action: `task_${args.status}`,
-      target: task.title,
-      taskId: args.taskId,
-      timestamp: Date.now(),
-    });
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: task.agentId,
+        action: `task_${args.status}`,
+        target: task.title,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
 
     // Notify task creator when completed
     if (args.status === "done" && task.createdBy) {
-      const agentDef = AGENT_DEFINITIONS[task.agentId];
+      const agentDef = task.agentId ? AGENT_DEFINITIONS[task.agentId] : undefined;
       await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
         userId: task.createdBy,
         orgId: task.orgId,
@@ -382,17 +386,19 @@ export const handoffTask = mutation({
       status: "todo",
     });
 
-    await ctx.db.insert("agentActivity", {
-      orgId: task.orgId,
-      agentId: task.agentId,
-      action: "task_handoff_sent",
-      target: `${task.title} → ${args.toAgentId}`,
-      taskId: args.taskId,
-      timestamp: Date.now(),
-    });
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: task.agentId,
+        action: "task_handoff_sent",
+        target: `${task.title} → ${args.toAgentId}`,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
 
     // Notify task assignee about handoff
-    const fromAgent = AGENT_DEFINITIONS[task.agentId];
+    const fromAgent = task.agentId ? AGENT_DEFINITIONS[task.agentId] : undefined;
     const toAgent = AGENT_DEFINITIONS[args.toAgentId];
     await ctx.scheduler.runAfter(0, internal.notifications.INTERNAL_createNotification, {
       userId: task.assignedTo,
@@ -416,6 +422,7 @@ export const updateTask = mutation({
     description: v.optional(v.string()),
     priority: v.optional(priorityValidator),
     agentId: v.optional(agentIdValidator),
+    clearAgent: v.optional(v.boolean()),
     dueDate: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     context: v.optional(v.string()),
@@ -432,7 +439,8 @@ export const updateTask = mutation({
     if (args.title !== undefined) patch.title = args.title;
     if (args.description !== undefined) patch.description = args.description;
     if (args.priority !== undefined) patch.priority = args.priority;
-    if (args.agentId !== undefined) patch.agentId = args.agentId;
+    if (args.clearAgent) patch.agentId = undefined;
+    else if (args.agentId !== undefined) patch.agentId = args.agentId;
     if (args.dueDate !== undefined) patch.dueDate = args.dueDate;
     if (args.tags !== undefined) patch.tags = args.tags;
     if (args.context !== undefined) patch.context = args.context;
@@ -441,14 +449,17 @@ export const updateTask = mutation({
       await ctx.db.patch(args.taskId, patch);
     }
 
-    await ctx.db.insert("agentActivity", {
-      orgId: task.orgId,
-      agentId: args.agentId || task.agentId,
-      action: "task_updated",
-      target: args.title || task.title,
-      taskId: args.taskId,
-      timestamp: Date.now(),
-    });
+    const activityAgentId = args.agentId || task.agentId;
+    if (activityAgentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: activityAgentId,
+        action: "task_updated",
+        target: args.title || task.title,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
 
     return true;
   },
@@ -468,13 +479,15 @@ export const deleteTask = mutation({
 
     await ctx.db.delete(args.taskId);
 
-    await ctx.db.insert("agentActivity", {
-      orgId: task.orgId,
-      agentId: task.agentId,
-      action: "task_deleted",
-      target: task.title,
-      timestamp: Date.now(),
-    });
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: task.agentId,
+        action: "task_deleted",
+        target: task.title,
+        timestamp: Date.now(),
+      });
+    }
 
     return true;
   },

@@ -782,7 +782,7 @@ const schema = defineSchema({
     orgId: v.id("organizations"),
     title: v.string(),
     description: v.string(),
-    agentId: agentIdValidator,
+    agentId: v.optional(agentIdValidator),
     status: taskStatusValidator,
     priority: priorityValidator,
     context: v.optional(v.string()),

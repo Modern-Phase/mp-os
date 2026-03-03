@@ -457,13 +457,14 @@ export const INTERNAL_getTeamStatus = internalQuery({
     // Group tasks by agent
     const agentMap: Record<string, { total: number; in_progress: number; blocked: number; done: number }> = {};
     for (const task of allTasks) {
-      if (!agentMap[task.agentId]) {
-        agentMap[task.agentId] = { total: 0, in_progress: 0, blocked: 0, done: 0 };
+      const aid = task.agentId ?? "unassigned";
+      if (!agentMap[aid]) {
+        agentMap[aid] = { total: 0, in_progress: 0, blocked: 0, done: 0 };
       }
-      agentMap[task.agentId].total++;
-      if (task.status === "in_progress") agentMap[task.agentId].in_progress++;
-      if (task.status === "blocked") agentMap[task.agentId].blocked++;
-      if (task.status === "done") agentMap[task.agentId].done++;
+      agentMap[aid].total++;
+      if (task.status === "in_progress") agentMap[aid].in_progress++;
+      if (task.status === "blocked") agentMap[aid].blocked++;
+      if (task.status === "done") agentMap[aid].done++;
     }
 
     const lines: string[] = [];
@@ -646,15 +647,15 @@ export const INTERNAL_verifyTaskCompletion = internalQuery({
     if (toolCalls.length === 0 && task.completedAt) {
       const windowStart = task.completedAt - 5 * 60_000; // 5 min before
       const windowEnd = task.completedAt + 60_000; // 1 min after
-      const allToolCalls = await ctx.db
+      const allToolCalls = task.agentId ? await ctx.db
         .query("agentToolCalls")
-        .withIndex("agentId", (q) => q.eq("agentId", task.agentId))
+        .withIndex("agentId", (q) => q.eq("agentId", task.agentId!))
         .filter((q) => q.and(
           q.eq(q.field("orgId"), args.orgId),
           q.gte(q.field("startedAt"), windowStart),
           q.lte(q.field("startedAt"), windowEnd),
         ))
-        .collect();
+        .collect() : [];
       toolCalls = allToolCalls;
     }
 
@@ -672,17 +673,17 @@ export const INTERNAL_verifyTaskCompletion = internalQuery({
     if (task.completedAt) {
       const msgWindowStart = task.completedAt - 10 * 60_000;
       const msgWindowEnd = task.completedAt + 60_000;
-      const nearbyMsgs = await ctx.db
+      const nearbyMsgs = task.agentId ? await ctx.db
         .query("agentChatMessages")
         .withIndex("agentId_timestamp", (q) =>
-          q.eq("agentId", task.agentId).gte("timestamp", msgWindowStart),
+          q.eq("agentId", task.agentId!).gte("timestamp", msgWindowStart),
         )
         .filter((q) => q.and(
           q.eq(q.field("orgId"), args.orgId),
           q.lte(q.field("timestamp"), msgWindowEnd),
           q.eq(q.field("role"), "agent"),
         ))
-        .take(5);
+        .take(5) : [];
 
       if (nearbyMsgs.length > 0) {
         const msgLines = nearbyMsgs.map((m) => {
@@ -694,10 +695,10 @@ export const INTERNAL_verifyTaskCompletion = internalQuery({
     }
 
     // 5. Workspace files for this agent
-    const files = await ctx.db
+    const files = task.agentId ? await ctx.db
       .query("agentFiles")
-      .withIndex("orgId_agentId", (q) => q.eq("orgId", args.orgId).eq("agentId", task.agentId))
-      .take(10);
+      .withIndex("orgId_agentId", (q) => q.eq("orgId", args.orgId).eq("agentId", task.agentId!))
+      .take(10) : [];
 
     if (files.length > 0) {
       const fileLines = files.map((f) => `  - ${f.path} (${f.sizeBytes}B, modified ${new Date(f.lastModifiedAt).toISOString()})`);
@@ -836,14 +837,16 @@ export const INTERNAL_handoffTaskFromMax = internalMutation({
       status: "todo",
     });
 
-    await ctx.db.insert("agentActivity", {
-      orgId: args.orgId,
-      agentId: task.agentId,
-      action: "task_handoff_sent",
-      target: `${task.title} → ${args.toAgentId} [via Max voice call]`,
-      taskId: args.taskId,
-      timestamp: Date.now(),
-    });
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: args.orgId,
+        agentId: task.agentId,
+        action: "task_handoff_sent",
+        target: `${task.title} → ${args.toAgentId} [via Max voice call]`,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
 
     return `Task "${task.title}" handed off to ${args.toAgentId}`;
   },

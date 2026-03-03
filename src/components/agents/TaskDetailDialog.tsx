@@ -128,7 +128,13 @@ export function TaskDetailDialog({
     if (title !== task.title) changes.title = title
     if (description !== task.description) changes.description = description
     if (priority !== task.priority) changes.priority = priority
-    if (agentId !== task.agentId) changes.agentId = agentId
+    if (agentId !== (task.agentId || '')) {
+      if (agentId) {
+        changes.agentId = agentId
+      } else {
+        changes.clearAgent = true
+      }
+    }
     const newDueDate = dueDate ? new Date(dueDate).getTime() : undefined
     if (newDueDate !== task.dueDate) changes.dueDate = newDueDate
     if (JSON.stringify(tagsList) !== JSON.stringify(task.tags || [])) changes.tags = tagsList
@@ -170,7 +176,7 @@ export function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="pb-0">
           <DialogTitle className="sr-only">Task Details</DialogTitle>
           <Input
@@ -183,7 +189,7 @@ export function TaskDetailDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto mt-4">
-          <div className="grid grid-cols-[1fr,240px] gap-6">
+          <div className="grid grid-cols-[1fr,280px] gap-8">
             {/* LEFT: Main content */}
             <div className="space-y-5 min-w-0">
               {/* Description */}
@@ -337,16 +343,22 @@ export function TaskDetailDialog({
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                   Agent
                 </label>
-                <Select value={agentId} onValueChange={setAgentId}>
+                <Select value={agentId || "none"} onValueChange={(v) => setAgentId(v === "none" ? "" : v)}>
                   <SelectTrigger className="h-8 text-sm">
-                    <span style={{ color: currentAgent.color }}>
-                      {currentAgent.emoji} {currentAgent.name}
-                    </span>
+                    {agentId ? (
+                      <span style={{ color: currentAgent.color }}>
+                        {currentAgent.emoji} {currentAgent.name}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">No agent</span>
+                    )}
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No agent</SelectItem>
                     {agents.map((agent: any) => (
                       <SelectItem key={agent.agentId} value={agent.agentId}>
-                        {agent.emoji} {agent.name} — {agent.role}
+                        <span>{agent.emoji} {agent.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{agent.role}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -634,12 +634,13 @@ function ProjectTasksTab({
   const [selectedTask, setSelectedTask] = useState<any | null>(null)
 
   const handleCreateTask = async () => {
-    if (!orgId || !newTask.title.trim() || !newTask.agentId) return
+    if (!orgId || !newTask.title.trim()) return
+    const agentId = newTask.agentId && newTask.agentId !== "none" ? newTask.agentId as AgentId : undefined
     await createTask({
       orgId,
       title: newTask.title.trim(),
       description: newTask.description.trim(),
-      agentId: newTask.agentId as AgentId,
+      ...(agentId ? { agentId } : {}),
       priority: newTask.priority as any,
       projectId,
     })
@@ -812,12 +813,14 @@ function NewTaskForm({
       />
       <Select value={form.agentId} onValueChange={(v) => setForm({ ...form, agentId: v })}>
         <SelectTrigger>
-          <SelectValue placeholder="Assign to agent" />
+          <SelectValue placeholder="Assign to agent (optional)" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="none">No agent</SelectItem>
           {agents.map((agent: any) => (
             <SelectItem key={agent.agentId} value={agent.agentId}>
-              {agent.emoji} {agent.name}
+              <span>{agent.emoji} {agent.name}</span>
+              <span className="ml-2 text-xs text-muted-foreground">{agent.role}</span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -833,7 +836,7 @@ function NewTaskForm({
           <SelectItem value="urgent">Urgent</SelectItem>
         </SelectContent>
       </Select>
-      <Button onClick={onSubmit} disabled={!form.title.trim() || !form.agentId} className="w-full">
+      <Button onClick={onSubmit} disabled={!form.title.trim()} className="w-full">
         Create Task
       </Button>
     </div>
