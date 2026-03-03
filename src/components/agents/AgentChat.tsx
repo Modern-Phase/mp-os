@@ -324,7 +324,7 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
       {/* Messages */}
       <main className="flex-1 min-h-0 overflow-hidden relative">
         <div ref={scrollRef} className="h-full overflow-y-auto px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto space-y-6 py-6 pb-20 min-h-full">
+          <div className="max-w-3xl mx-auto space-y-6 py-6 pb-4">
             {/* Welcome */}
             {(!messages || messages.length === 0) && (
               <div className="flex flex-col items-center justify-center text-center py-12">
