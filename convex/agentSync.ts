@@ -110,17 +110,21 @@ export const INTERNAL_syncAgentData = internalAction({
   args: {
     agentId: v.string(),
     orgId: v.string(),
+    agentMessageId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ files: number; sessions: number; errors: string[] }> => {
     const results = { files: 0, sessions: 0, errors: [] as string[] };
+    console.log(`[agentSync] Starting sync for ${args.agentId}, messageId=${args.agentMessageId || "none"}`);
 
     try {
       const filesRes = await orchestratorFetch(`/api/instances/${args.agentId}/workspace/files`);
       const { files } = await filesRes.json();
-      if (Array.isArray(files)) {
+      console.log(`[agentSync] Orchestrator returned ${Array.isArray(files) ? files.length : 0} file(s) for ${args.agentId}`);
+      if (Array.isArray(files) && files.length > 0) {
         await ctx.runMutation(internal.agentSync.upsertFiles, {
           orgId: args.orgId,
           agentId: args.agentId,
+          agentMessageId: args.agentMessageId,
           files: files.map((f: any) => ({
             path: f.path,
             filename: f.filename,
@@ -133,6 +137,7 @@ export const INTERNAL_syncAgentData = internalAction({
         results.files = files.length;
       }
     } catch (err) {
+      console.error(`[agentSync] File sync failed for ${args.agentId}:`, err);
       results.errors.push(`Files: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
 
@@ -177,6 +182,7 @@ export const upsertFiles = internalMutation({
   args: {
     orgId: v.string(),
     agentId: v.string(),
+    agentMessageId: v.optional(v.string()),
     files: v.array(
       v.object({
         path: v.string(),
@@ -203,6 +209,15 @@ export const upsertFiles = internalMutation({
     const existingByPath = new Map(existing.map((f) => [f.path, f]));
     const incomingPaths = new Set(args.files.map((f) => f.path));
 
+    // Track all file IDs for artifact linking (maps path → file info)
+    const allFileIds = new Map<string, {
+      fileId: string;
+      filename: string;
+      path: string;
+      mimeType: string;
+      sizeBytes: number;
+    }>();
+
     // Upsert files
     for (const file of args.files) {
       const ex = existingByPath.get(file.path);
@@ -217,8 +232,15 @@ export const upsertFiles = internalMutation({
             syncedAt: now,
           });
         }
+        allFileIds.set(file.path, {
+          fileId: ex._id,
+          filename: file.filename,
+          path: file.path,
+          mimeType: file.mimeType,
+          sizeBytes: file.sizeBytes,
+        });
       } else {
-        await ctx.db.insert("agentFiles", {
+        const newId = await ctx.db.insert("agentFiles", {
           orgId,
           agentId: args.agentId,
           path: file.path,
@@ -229,6 +251,13 @@ export const upsertFiles = internalMutation({
           lastModifiedAt: file.lastModifiedAt,
           syncedAt: now,
         });
+        allFileIds.set(file.path, {
+          fileId: newId,
+          filename: file.filename,
+          path: file.path,
+          mimeType: file.mimeType,
+          sizeBytes: file.sizeBytes,
+        });
       }
     }
 
@@ -236,6 +265,32 @@ export const upsertFiles = internalMutation({
     for (const ex of existing) {
       if (!incomingPaths.has(ex.path)) {
         await ctx.db.delete(ex._id);
+      }
+    }
+
+    // Link ALL workspace files to the agent message as artifacts
+    // The agent just responded — all files in its workspace are relevant
+    if (args.agentMessageId && allFileIds.size > 0) {
+      const messageId = ctx.db.normalizeId("agentChatMessages", args.agentMessageId);
+      if (messageId) {
+        const message = await ctx.db.get(messageId);
+        if (message) {
+          const existingMeta = (message.metadata as Record<string, any>) || {};
+          const artifacts = Array.from(allFileIds.values()).map((f) => ({
+            fileId: f.fileId,
+            filename: f.filename,
+            path: f.path,
+            mimeType: f.mimeType,
+            sizeBytes: f.sizeBytes,
+          }));
+          await ctx.db.patch(messageId, {
+            metadata: {
+              ...existingMeta,
+              artifacts,
+            },
+          });
+          console.log(`[agentSync] Linked ${artifacts.length} artifact(s) to message ${args.agentMessageId}`);
+        }
       }
     }
   },
@@ -354,6 +409,16 @@ export const getSyncStatus = query({
       sessionCount: transcripts.length,
       lastSyncedAt: Math.max(lastSyncedFile, lastSyncedTranscript) || null,
     };
+  },
+});
+
+export const getAgentFileById = query({
+  args: {
+    fileId: v.id("agentFiles"),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.fileId);
   },
 });
 

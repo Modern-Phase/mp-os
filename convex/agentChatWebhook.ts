@@ -641,6 +641,7 @@ export const receiveAgentResponse = internalMutation({
         await ctx.scheduler.runAfter(5000, internal.agentSync.INTERNAL_syncAgentData, {
           agentId: args.agentId,
           orgId: String(scanOriginalMsg.orgId),
+          agentMessageId: agentMessageId ? String(agentMessageId) : undefined,
         });
       }
     } else if (args.state === "error") {

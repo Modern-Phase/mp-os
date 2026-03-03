@@ -23,6 +23,7 @@ import {
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import type { Citation } from "@/components/chat/ChatMessage";
 import { ToolCallDisplay } from "@/components/agents/ToolCallDisplay";
+import { ArtifactCard, ArtifactPanelProvider, ArtifactSidePanel } from "@/components/agents/ArtifactCard";
 import { CallStatusBanner } from "@/components/agents/CallStatusBanner";
 
 const ACCEPTED_FILE_TYPES = ".csv,.txt,.md,.json,.tsv";
@@ -278,7 +279,10 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-background overflow-hidden">
+    <ArtifactPanelProvider>
+    <div className="h-full flex bg-background overflow-hidden">
+    {/* Chat column */}
+    <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-border">
         <div className="flex items-center gap-3">
@@ -419,6 +423,10 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
                       runId={msg.runId}
                     />
                   )}
+                  {/* File artifacts created by agent */}
+                  {msg.role === "agent" && msg.metadata?.artifacts?.length > 0 && (
+                    <ArtifactCard artifacts={msg.metadata.artifacts} />
+                  )}
                   {isFailed && (
                     <div className="flex justify-end mt-1">
                       <button
@@ -543,5 +551,9 @@ export function AgentChat({ agent, orgId }: AgentChatProps) {
         </div>
       </div>
     </div>
+    {/* Artifact side panel */}
+    <ArtifactSidePanel />
+    </div>
+    </ArtifactPanelProvider>
   );
 }
