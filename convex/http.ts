@@ -1697,6 +1697,32 @@ http.route({
           break;
         }
 
+        case "get_agent_work_log": {
+          const agentId = fnArgs?.agent_id || fnArgs?.agentId;
+          if (!agentId) {
+            result = "Please specify which agent's work log to pull.";
+            break;
+          }
+          result = await ctx.runQuery(
+            internal.retellCalls.INTERNAL_getAgentWorkLog,
+            { orgId, agentId, hoursBack: fnArgs?.hours_back },
+          );
+          break;
+        }
+
+        case "verify_task_completion": {
+          const verifyTaskId = fnArgs?.task_id || fnArgs?.taskId;
+          if (!verifyTaskId) {
+            result = "I need a task ID to verify.";
+            break;
+          }
+          result = await ctx.runQuery(
+            internal.retellCalls.INTERNAL_verifyTaskCompletion,
+            { orgId, taskId: verifyTaskId },
+          );
+          break;
+        }
+
         default:
           result = `Unknown function: ${name}`;
       }

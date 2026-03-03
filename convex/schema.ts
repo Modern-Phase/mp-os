@@ -794,6 +794,7 @@ const schema = defineSchema({
     sourceMessageId: v.optional(v.id("agentChatMessages")), // Originating chat message
     dueDate: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    completionNotes: v.optional(v.string()),
     tags: v.array(v.string()),
     projectId: v.optional(v.id("agentProjects")),
   })

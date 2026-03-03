@@ -495,6 +495,219 @@ export const INTERNAL_getRecentActivityForMax = internalQuery({
   },
 });
 
+// Deep work log for a specific agent — pulls from tasks, tool calls, messages, and activity
+export const INTERNAL_getAgentWorkLog = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+    agentId: v.string(),
+    hoursBack: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const since = Date.now() - (args.hoursBack || 24) * 3600_000;
+    const sections: string[] = [];
+
+    // 1. Completed tasks with notes
+    const tasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("agentId_status", (q) => q.eq("agentId", args.agentId as any).eq("status", "done"))
+      .filter((q) => q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.gte(q.field("completedAt"), since),
+      ))
+      .collect();
+
+    if (tasks.length > 0) {
+      const taskLines = tasks.map((t) => {
+        const notes = (t as any).completionNotes ? ` — Notes: ${(t as any).completionNotes}` : " — No completion notes";
+        return `  - "${t.title}" (${t.priority})${notes}`;
+      });
+      sections.push(`COMPLETED TASKS (${tasks.length}):\n${taskLines.join("\n")}`);
+    } else {
+      sections.push("COMPLETED TASKS: None in this period.");
+    }
+
+    // 2. In-progress tasks
+    const activeTasks = await ctx.db
+      .query("agentTasks")
+      .withIndex("agentId_status", (q) => q.eq("agentId", args.agentId as any).eq("status", "in_progress"))
+      .filter((q) => q.eq(q.field("orgId"), args.orgId))
+      .collect();
+
+    if (activeTasks.length > 0) {
+      const activeLines = activeTasks.map((t) => `  - "${t.title}" (${t.priority})`);
+      sections.push(`ACTIVE TASKS (${activeTasks.length}):\n${activeLines.join("\n")}`);
+    }
+
+    // 3. Tool calls grouped by tool name
+    const toolCalls = await ctx.db
+      .query("agentToolCalls")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.gte(q.field("startedAt"), since),
+      ))
+      .collect();
+
+    if (toolCalls.length > 0) {
+      const toolGroups: Record<string, number> = {};
+      for (const tc of toolCalls) {
+        toolGroups[tc.toolName] = (toolGroups[tc.toolName] || 0) + 1;
+      }
+      const toolLines = Object.entries(toolGroups)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => `  - ${name}: ${count} calls`);
+      sections.push(`TOOL USAGE (${toolCalls.length} total calls):\n${toolLines.join("\n")}`);
+    } else {
+      sections.push("TOOL USAGE: No tool calls recorded.");
+    }
+
+    // 4. Recent agent messages (last 10, truncated)
+    const messages = await ctx.db
+      .query("agentChatMessages")
+      .withIndex("agentId_timestamp", (q) => q.eq("agentId", args.agentId as any).gte("timestamp", since))
+      .order("desc")
+      .filter((q) => q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.eq(q.field("role"), "agent"),
+      ))
+      .take(10);
+
+    if (messages.length > 0) {
+      const msgLines = messages.map((m) => {
+        const preview = m.content.slice(0, 150).replace(/\n/g, " ");
+        return `  - ${preview}${m.content.length > 150 ? "..." : ""}`;
+      });
+      sections.push(`RECENT MESSAGES (${messages.length}):\n${msgLines.join("\n")}`);
+    }
+
+    // 5. Recent activity log
+    const activity = await ctx.db
+      .query("agentActivity")
+      .withIndex("agentId", (q) => q.eq("agentId", args.agentId as any))
+      .order("desc")
+      .filter((q) => q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.gte(q.field("timestamp"), since),
+      ))
+      .take(15);
+
+    if (activity.length > 0) {
+      const actLines = activity.map((a) => `  - ${a.action}: ${a.target || ""}`);
+      sections.push(`ACTIVITY LOG (${activity.length}):\n${actLines.join("\n")}`);
+    }
+
+    const hoursLabel = args.hoursBack || 24;
+    return `=== Work Log: ${args.agentId} (last ${hoursLabel}h) ===\n\n${sections.join("\n\n")}`;
+  },
+});
+
+// Deep-inspect a specific task — shows completion notes, tool calls, messages around completion
+export const INTERNAL_verifyTaskCompletion = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+    taskId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const taskDocId = ctx.db.normalizeId("agentTasks", args.taskId);
+    if (!taskDocId) return `Invalid task ID: ${args.taskId}`;
+
+    const task = await ctx.db.get(taskDocId);
+    if (!task) return `Task not found: ${args.taskId}`;
+    if (task.orgId !== args.orgId) return `Task not found in this organization.`;
+
+    const sections: string[] = [];
+
+    // 1. Task details
+    const status = task.status === "done" ? `DONE (completed ${task.completedAt ? new Date(task.completedAt).toISOString() : "unknown"})` : task.status.toUpperCase();
+    sections.push(`TASK: "${task.title}"\nStatus: ${status}\nPriority: ${task.priority}\nAgent: ${task.agentId}\nDescription: ${task.description}`);
+
+    // 2. Completion notes
+    if ((task as any).completionNotes) {
+      sections.push(`COMPLETION NOTES:\n${(task as any).completionNotes}`);
+    } else if (task.status === "done") {
+      sections.push("COMPLETION NOTES: None provided — agent did not document what was done.");
+    }
+
+    // 3. Tool calls linked to the source message or around completion time
+    let toolCalls: any[] = [];
+
+    // Try via sourceMessageId → runId chain
+    if (task.sourceMessageId) {
+      const sourceMsg = await ctx.db.get(task.sourceMessageId);
+      if (sourceMsg?.runId) {
+        toolCalls = await ctx.db
+          .query("agentToolCalls")
+          .withIndex("runId", (q) => q.eq("runId", sourceMsg.runId!))
+          .collect();
+      }
+    }
+
+    // Fallback: time window around completedAt
+    if (toolCalls.length === 0 && task.completedAt) {
+      const windowStart = task.completedAt - 5 * 60_000; // 5 min before
+      const windowEnd = task.completedAt + 60_000; // 1 min after
+      const allToolCalls = await ctx.db
+        .query("agentToolCalls")
+        .withIndex("agentId", (q) => q.eq("agentId", task.agentId))
+        .filter((q) => q.and(
+          q.eq(q.field("orgId"), args.orgId),
+          q.gte(q.field("startedAt"), windowStart),
+          q.lte(q.field("startedAt"), windowEnd),
+        ))
+        .collect();
+      toolCalls = allToolCalls;
+    }
+
+    if (toolCalls.length > 0) {
+      const tcLines = toolCalls.map((tc) => {
+        const result = tc.toolResult ? tc.toolResult.slice(0, 200) : "no result";
+        return `  - ${tc.toolName} (${tc.status}, ${tc.duration || 0}ms): ${result}`;
+      });
+      sections.push(`TOOL CALLS (${toolCalls.length}):\n${tcLines.join("\n")}`);
+    } else {
+      sections.push("TOOL CALLS: None found linked to this task.");
+    }
+
+    // 4. Nearby agent messages around completion time
+    if (task.completedAt) {
+      const msgWindowStart = task.completedAt - 10 * 60_000;
+      const msgWindowEnd = task.completedAt + 60_000;
+      const nearbyMsgs = await ctx.db
+        .query("agentChatMessages")
+        .withIndex("agentId_timestamp", (q) =>
+          q.eq("agentId", task.agentId).gte("timestamp", msgWindowStart),
+        )
+        .filter((q) => q.and(
+          q.eq(q.field("orgId"), args.orgId),
+          q.lte(q.field("timestamp"), msgWindowEnd),
+          q.eq(q.field("role"), "agent"),
+        ))
+        .take(5);
+
+      if (nearbyMsgs.length > 0) {
+        const msgLines = nearbyMsgs.map((m) => {
+          const preview = m.content.slice(0, 200).replace(/\n/g, " ");
+          return `  - ${preview}${m.content.length > 200 ? "..." : ""}`;
+        });
+        sections.push(`AGENT MESSAGES NEAR COMPLETION (${nearbyMsgs.length}):\n${msgLines.join("\n")}`);
+      }
+    }
+
+    // 5. Workspace files for this agent
+    const files = await ctx.db
+      .query("agentFiles")
+      .withIndex("orgId_agentId", (q) => q.eq("orgId", args.orgId).eq("agentId", task.agentId))
+      .take(10);
+
+    if (files.length > 0) {
+      const fileLines = files.map((f) => `  - ${f.path} (${f.sizeBytes}B, modified ${new Date(f.lastModifiedAt).toISOString()})`);
+      sections.push(`WORKSPACE FILES (${files.length}):\n${fileLines.join("\n")}`);
+    }
+
+    return sections.join("\n\n");
+  },
+});
+
 export const INTERNAL_createTaskFromMax = internalMutation({
   args: {
     orgId: v.id("organizations"),
@@ -526,6 +739,37 @@ export const INTERNAL_createTaskFromMax = internalMutation({
       timestamp: Date.now(),
     });
 
+    // Notify the agent about their new task via dispatched message
+    const notifyContent = `[From Max, via voice call] New task assigned to you: "${args.title}" (${(args.priority as any) || "medium"} priority). ${args.description}. Please begin working on this.`;
+    const notifyMsgId = await ctx.db.insert("agentChatMessages", {
+      orgId: args.orgId,
+      agentId: args.agentId as any,
+      userId: args.userId,
+      content: notifyContent,
+      role: "user",
+      status: "pending",
+      timestamp: Date.now(),
+    });
+
+    const queueId = await ctx.db.insert("agentChatQueue", {
+      orgId: args.orgId,
+      messageId: notifyMsgId,
+      agentId: args.agentId as any,
+      userId: args.userId,
+      status: "queued",
+      attempts: 0,
+      queuedAt: Date.now(),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.agentChat.dispatchChatMessage, {
+      queueId,
+      messageId: notifyMsgId as string,
+      agentId: args.agentId,
+      orgId: args.orgId as string,
+      content: notifyContent,
+      userId: args.userId as string,
+    });
+
     return taskId;
   },
 });
@@ -538,14 +782,36 @@ export const INTERNAL_sendAgentMessage = internalMutation({
     message: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("agentChatMessages", {
+    const content = `[From Max, via voice call] ${args.message}`;
+    const messageId = await ctx.db.insert("agentChatMessages", {
       orgId: args.orgId,
       agentId: args.agentId as any,
       userId: args.userId,
-      content: `[From Max, via voice call] ${args.message}`,
+      content,
       role: "user",
-      status: "delivered",
+      status: "pending",
       timestamp: Date.now(),
+    });
+
+    // Queue for processing (mirrors createChatMessage flow in agentChat.ts)
+    const queueId = await ctx.db.insert("agentChatQueue", {
+      orgId: args.orgId,
+      messageId,
+      agentId: args.agentId as any,
+      userId: args.userId,
+      status: "queued",
+      attempts: 0,
+      queuedAt: Date.now(),
+    });
+
+    // Dispatch to VPS Orchestrator (includes RAG + memory injection)
+    await ctx.scheduler.runAfter(0, internal.agentChat.dispatchChatMessage, {
+      queueId,
+      messageId: messageId as string,
+      agentId: args.agentId,
+      orgId: args.orgId as string,
+      content,
+      userId: args.userId as string,
     });
 
     return `Message sent to ${args.agentId}`;
@@ -666,6 +932,15 @@ You have real-time access to the company's systems. Use your tools:
 - **get_recent_activity** — See what's happened recently across the team.
 - **search_knowledge_base** — Search internal docs: contract templates, email sequences, SOWs, proposals, processes. Use when Scott asks about anything that might be documented.
 - **handoff_task** — Move a task from one agent to another.
+- **get_agent_work_log** — Pull a detailed work log for a specific agent: completed tasks with notes, tool calls, messages, and activity. Use when Scott asks "what has [agent] actually been doing?" or "show me [agent]'s work."
+- **verify_task_completion** — Deep-inspect a specific task: completion notes, tool calls made, agent messages around completion, and workspace files. Use when Scott says "verify that task" or "did they actually do that?"
+
+## Verification Protocol
+When Scott asks about the quality of work or whether something was actually done:
+1. First pull the agent's work log with get_agent_work_log
+2. If a specific task is in question, follow up with verify_task_completion
+3. Look for red flags: tasks marked done with no completion notes, no tool calls, or no related messages
+4. Be honest — if the evidence is thin, say so. "Larry marked it done but there's no record of actual work" is better than covering for the team.
 
 ## How to Handle Requests
 - If Scott asks about status or what's happening, call get_team_status or get_recent_activity first, then summarize verbally.
@@ -819,6 +1094,41 @@ function buildMaxTools(functionsUrl: string) {
           note: { type: "string", description: "Optional note explaining the handoff" },
         },
         required: ["task_id", "to_agent_id"],
+      },
+    },
+    {
+      type: "custom",
+      name: "get_agent_work_log",
+      description: "Get a detailed work log for a specific agent — completed tasks with notes, tool calls, messages, and activity. Use when asked what an agent has actually been doing.",
+      url: functionsUrl,
+      speak_during_execution: true,
+      execution_message_description: "Say something brief like 'Let me pull up their work log.'",
+      execution_message_type: "prompt" as const,
+      timeout_ms: 12000,
+      parameters: {
+        type: "object" as const,
+        properties: {
+          agent_id: { type: "string", description: "The agent ID (lowercase): larry, oliver, fiona, taylor" },
+          hours_back: { type: "number", description: "How many hours back to look. Default: 24" },
+        },
+        required: ["agent_id"],
+      },
+    },
+    {
+      type: "custom",
+      name: "verify_task_completion",
+      description: "Deep-inspect a specific task to verify it was actually done — shows completion notes, tool calls, agent messages near completion, and workspace files.",
+      url: functionsUrl,
+      speak_during_execution: true,
+      execution_message_description: "Say something brief like 'Let me verify that task.'",
+      execution_message_type: "prompt" as const,
+      timeout_ms: 12000,
+      parameters: {
+        type: "object" as const,
+        properties: {
+          task_id: { type: "string", description: "The Convex task ID to inspect" },
+        },
+        required: ["task_id"],
       },
     },
   ];

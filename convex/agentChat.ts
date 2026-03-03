@@ -25,8 +25,10 @@ TASK MANAGEMENT: You are connected to a Mission Control dashboard. When you need
 
 Actions: create | update | complete | handoff
 Format: <task_directives>[{"action":"create","title":"Imperative title","description":"Details","priority":"medium","tags":["tag"]}]</task_directives>
+For complete: <task_directives>[{"action":"complete","taskId":"<convex_id>","notes":"Brief summary of what was done and deliverables produced"}]</task_directives>
 For handoff: <task_directives>[{"action":"handoff","taskId":"<convex_id>","toAgentId":"<agent_id>","note":"optional reason"}]</task_directives>
 Priority: low | medium | high | urgent
+IMPORTANT: When completing a task, always include "notes" describing what you actually did. Never mark a task done silently.
 
 MEMORY MANAGEMENT: You can store important facts, preferences, and learnings for future reference.
 - Include a <memory_directives> block at the END of your response (after any task_directives)

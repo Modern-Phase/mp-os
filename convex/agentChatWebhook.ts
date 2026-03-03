@@ -20,6 +20,7 @@ interface TaskDirective {
   taskId?: string; // For update/complete/handoff — Convex ID of existing task
   toAgentId?: string; // For handoff — target agent
   note?: string; // For handoff — optional note
+  notes?: string; // For complete — summary of what was done
 }
 
 function parseTaskDirectives(content: string): {
@@ -447,6 +448,7 @@ export const receiveAgentResponse = internalMutation({
                     await ctx.db.patch(taskDocId, {
                       status: "done",
                       completedAt: Date.now(),
+                      ...(directive.notes && { completionNotes: directive.notes }),
                     });
 
                     await ctx.db.insert("agentActivity", {
@@ -456,6 +458,7 @@ export const receiveAgentResponse = internalMutation({
                       target: task.title,
                       taskId: taskDocId,
                       timestamp: Date.now(),
+                      ...(directive.notes && { metadata: { completionNotes: directive.notes } }),
                     });
                   }
                 }
