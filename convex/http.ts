@@ -1828,7 +1828,7 @@ http.route({
 http.route({
   path: "/webhooks/quickbooks",
   method: "POST",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, request) => {
     try {
       const body = await request.json();
       const { eventNotifications } = body;

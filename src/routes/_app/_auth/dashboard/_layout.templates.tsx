@@ -283,7 +283,7 @@ function TemplatesPage() {
                           {t.type}
                         </Badge>
                         {t.builtIn && (
-                          <Lock className="h-3 w-3 text-muted-foreground" title="Built-in template" />
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         )}
                       </div>
                     </div>
