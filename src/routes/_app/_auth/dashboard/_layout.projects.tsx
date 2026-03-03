@@ -43,6 +43,10 @@ import {
   Bot,
   ExternalLink,
   Trash2,
+  GitBranch,
+  FileBarChart,
+  Package,
+  Presentation,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
 import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
@@ -537,6 +541,53 @@ function ProjectDetail({
           value={daysUntilTarget < 0 ? `${Math.abs(daysUntilTarget)}d` : `${daysUntilTarget}d`}
           sub={daysUntilTarget < 0 ? 'overdue' : 'remaining'}
         />
+      </div>
+
+      {/* Client Portal cards */}
+      <div className="grid grid-cols-4 gap-3 px-6 py-3 border-b bg-white dark:bg-gray-950 shrink-0">
+        <Link
+          to="/dashboard/github"
+          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group"
+        >
+          <GitBranch className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium truncate">GitHub</p>
+            <p className="text-[10px] text-muted-foreground">Repos & activity</p>
+          </div>
+        </Link>
+        <button
+          onClick={() => setActiveTab('activity')}
+          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group text-left"
+        >
+          <FileBarChart className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium truncate">Progress Report</p>
+            <p className="text-[10px] text-muted-foreground">{progress}% complete</p>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('tasks')}
+          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group text-left"
+        >
+          <Package className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium truncate">Deliverables</p>
+            <p className="text-[10px] text-muted-foreground">{tasksByStatus.done}/{tasksByStatus.total} delivered</p>
+          </div>
+        </button>
+        <div className="flex items-center gap-3 rounded-lg border px-3 py-2.5 group">
+          <Presentation className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium truncate">Demo Day</p>
+            <p className="text-[10px] text-muted-foreground">
+              {daysUntilTarget <= 7 && daysUntilTarget > 0
+                ? `In ${daysUntilTarget}d`
+                : daysUntilTarget <= 0
+                  ? 'Schedule now'
+                  : new Date(project.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Tabbed content — min-h-0 on each flex layer so ScrollArea can constrain */}

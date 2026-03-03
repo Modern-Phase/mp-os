@@ -313,6 +313,14 @@ export const createTask = mutation({
       });
     }
 
+    // Auto-transition project from planning → in_progress when first task added
+    if (args.projectId) {
+      const project = await ctx.db.get(args.projectId);
+      if (project && project.status === "planning") {
+        await ctx.db.patch(args.projectId, { status: "in_progress" });
+      }
+    }
+
     return taskId;
   },
 });
@@ -359,6 +367,32 @@ export const updateTaskStatus = mutation({
         resourceId: String(args.taskId),
         agentId: task.agentId,
       });
+    }
+
+    // Auto-transition project status based on task activity
+    if (task.projectId) {
+      const project = await ctx.db.get(task.projectId);
+      if (project) {
+        const projectTasks = await ctx.db
+          .query("agentTasks")
+          .withIndex("orgId", (q) => q.eq("orgId", task.orgId))
+          .filter((q) => q.eq(q.field("projectId"), task.projectId))
+          .collect();
+        const statuses = projectTasks.map((t) => t.status);
+        let newStatus: string | null = null;
+        if (statuses.length > 0 && statuses.every((s) => s === "done")) {
+          newStatus = "delivered";
+        } else if (statuses.some((s) => s === "in_progress")) {
+          newStatus = "in_progress";
+        } else if (statuses.some((s) => s === "review")) {
+          newStatus = "review";
+        } else if (statuses.some((s) => s === "todo" || s === "backlog")) {
+          newStatus = "in_progress";
+        }
+        if (newStatus && newStatus !== project.status) {
+          await ctx.db.patch(task.projectId, { status: newStatus as any });
+        }
+      }
     }
 
     return true;
