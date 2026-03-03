@@ -1,6 +1,7 @@
 // src/components/agents/GlobalTaskBoard.tsx
 
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '~/convex/_generated/api'
 import { Id } from '~/convex/_generated/dataModel'
@@ -26,7 +27,6 @@ import {
 import { Plus, Filter, LayoutGrid, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/misc'
 import { TaskCard } from '@/components/kanban/TaskCard'
-import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
 import { STATUS_DOT_COLORS, STATUS_ACCENT_COLORS } from '@/components/kanban/kanban-utils'
 
 const COLUMNS: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'blocked', 'done']
@@ -46,6 +46,7 @@ interface GlobalTaskBoardProps {
 }
 
 export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
+  const navigate = useNavigate()
   const tasks = useQuery(api.agents.getAllTasks, { orgId })
   const updateStatus = useMutation(api.agents.updateTaskStatus)
   const createTask = useMutation(api.agents.createTask)
@@ -58,7 +59,6 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
     agentId: '',
   })
 
-  const [selectedTask, setSelectedTask] = useState<any | null>(null)
   const [quickAddColumn, setQuickAddColumn] = useState<TaskStatus | null>(null)
   const [quickAddTitle, setQuickAddTitle] = useState('')
   const [quickAddAgent, setQuickAddAgent] = useState('')
@@ -400,7 +400,7 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
                             agent={taskAgent}
                             showAgent
                             onDragStart={(e) => handleDragStart(e, task._id)}
-                            onClick={() => setSelectedTask(task)}
+                            onClick={() => navigate({ to: '/dashboard/task/$taskId', params: { taskId: task._id } })}
                           />
                         )
                       })}
@@ -428,14 +428,6 @@ export function GlobalTaskBoard({ orgId, agents }: GlobalTaskBoardProps) {
         </div>
       )}
 
-      {/* Task detail dialog */}
-      <TaskDetailDialog
-        task={selectedTask}
-        agents={agents}
-        orgId={orgId}
-        open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) setSelectedTask(null) }}
-      />
     </div>
   )
 }

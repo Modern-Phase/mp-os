@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { agentIdValidator, taskStatusValidator, priorityValidator, AGENT_IDS } from "./schema";
+import { agentIdValidator, taskStatusValidator, priorityValidator, documentTypeValidator, AGENT_IDS } from "./schema";
 
 // ========== AGENT DEFINITIONS ==========
 
@@ -816,6 +816,153 @@ export const createProject = mutation({
       progress: 0,
       createdBy: userId,
     });
+  },
+});
+
+// ========== TASK DETAIL PAGE ==========
+
+export const getTask = query({
+  args: { taskId: v.id("agentTasks") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.taskId);
+  },
+});
+
+export const getTaskActivity = query({
+  args: {
+    taskId: v.id("agentTasks"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("agentActivity")
+      .withIndex("taskId", (q) => q.eq("taskId", args.taskId))
+      .order("desc")
+      .take(args.limit || 50);
+  },
+});
+
+export const getTaskAttachments = query({
+  args: { taskId: v.id("agentTasks") },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.taskId);
+    if (!task || !task.attachments || task.attachments.length === 0) return [];
+
+    const docs = await Promise.all(
+      task.attachments.map((docId) => ctx.db.get(docId)),
+    );
+    return docs.filter(Boolean);
+  },
+});
+
+export const uploadTaskAttachment = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+    name: v.string(),
+    type: documentTypeValidator,
+    storageId: v.id("_storage"),
+    fileSize: v.number(),
+    mimeType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+
+    // Find or create a "Task Attachments" collection for this org
+    let collection = await ctx.db
+      .query("documentCollections")
+      .withIndex("orgId", (q) => q.eq("orgId", task.orgId))
+      .filter((q) => q.eq(q.field("name"), "Task Attachments"))
+      .first();
+
+    if (!collection) {
+      const collectionId = await ctx.db.insert("documentCollections", {
+        userId,
+        orgId: task.orgId,
+        name: "Task Attachments",
+        description: "Documents attached to tasks",
+        isDefault: false,
+      });
+      collection = await ctx.db.get(collectionId);
+    }
+
+    // Create document record
+    const documentId = await ctx.db.insert("documents", {
+      userId,
+      orgId: task.orgId,
+      collectionId: collection!._id,
+      name: args.name,
+      type: args.type,
+      storageId: args.storageId,
+      fileSize: args.fileSize,
+      mimeType: args.mimeType,
+      processingStatus: "pending",
+    });
+
+    // Link to task
+    const existingAttachments = task.attachments || [];
+    await ctx.db.patch(args.taskId, {
+      attachments: [...existingAttachments, documentId],
+    });
+
+    // Schedule RAG processing
+    await ctx.scheduler.runAfter(0, internal.rag.processDocument, {
+      documentId,
+      userId,
+    });
+
+    // Log activity
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: task.agentId,
+        action: "document_attached",
+        target: `${args.name} → ${task.title}`,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
+
+    return documentId;
+  },
+});
+
+export const removeDocumentFromTask = mutation({
+  args: {
+    taskId: v.id("agentTasks"),
+    documentId: v.id("documents"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+
+    const doc = await ctx.db.get(args.documentId);
+
+    // Remove from task attachments
+    const attachments = (task.attachments || []).filter(
+      (id) => id !== args.documentId,
+    );
+    await ctx.db.patch(args.taskId, { attachments });
+
+    // Log activity
+    if (task.agentId) {
+      await ctx.db.insert("agentActivity", {
+        orgId: task.orgId,
+        agentId: task.agentId,
+        action: "document_removed",
+        target: `${doc?.name || "Document"} from ${task.title}`,
+        taskId: args.taskId,
+        timestamp: Date.now(),
+      });
+    }
+
+    return true;
   },
 });
 

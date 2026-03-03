@@ -43,6 +43,7 @@ import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_ap
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
 import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
 import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.index'
+import { Route as AppAuthDashboardLayoutTaskTaskIdRouteImport } from './routes/_app/_auth/dashboard/_layout.task.$taskId'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
 import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
 
@@ -234,6 +235,12 @@ const AppAuthDashboardLayoutSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
+const AppAuthDashboardLayoutTaskTaskIdRoute =
+  AppAuthDashboardLayoutTaskTaskIdRouteImport.update({
+    id: '/task/$taskId',
+    path: '/task/$taskId',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutSettingsIntegrationsRoute =
   AppAuthDashboardLayoutSettingsIntegrationsRouteImport.update({
     id: '/integrations',
@@ -281,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
+  '/dashboard/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
   '/dashboard/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -314,6 +322,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
+  '/dashboard/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -353,6 +362,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
   '/_app/_auth/dashboard/_layout/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/_app/_auth/dashboard/_layout/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
+  '/_app/_auth/dashboard/_layout/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
   '/_app/_auth/dashboard/_layout/settings/': typeof AppAuthDashboardLayoutSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/integrations'
+    | '/dashboard/task/$taskId'
     | '/dashboard/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/integrations'
+    | '/dashboard/task/$taskId'
     | '/dashboard/settings'
   id:
     | '__root__'
@@ -462,6 +474,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/'
     | '/_app/_auth/dashboard/_layout/settings/billing'
     | '/_app/_auth/dashboard/_layout/settings/integrations'
+    | '/_app/_auth/dashboard/_layout/task/$taskId'
     | '/_app/_auth/dashboard/_layout/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -714,6 +727,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsIndexRouteImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
     }
+    '/_app/_auth/dashboard/_layout/task/$taskId': {
+      id: '/_app/_auth/dashboard/_layout/task/$taskId'
+      path: '/task/$taskId'
+      fullPath: '/dashboard/task/$taskId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutTaskTaskIdRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/settings/integrations': {
       id: '/_app/_auth/dashboard/_layout/settings/integrations'
       path: '/integrations'
@@ -771,6 +791,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutTemplatesRoute: typeof AppAuthDashboardLayoutTemplatesRoute
   AppAuthDashboardLayoutWorkflowsRoute: typeof AppAuthDashboardLayoutWorkflowsRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
+  AppAuthDashboardLayoutTaskTaskIdRoute: typeof AppAuthDashboardLayoutTaskTaskIdRoute
 }
 
 const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
@@ -795,6 +816,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutTemplatesRoute: AppAuthDashboardLayoutTemplatesRoute,
     AppAuthDashboardLayoutWorkflowsRoute: AppAuthDashboardLayoutWorkflowsRoute,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
+    AppAuthDashboardLayoutTaskTaskIdRoute:
+      AppAuthDashboardLayoutTaskTaskIdRoute,
   }
 
 const AppAuthDashboardLayoutRouteWithChildren =

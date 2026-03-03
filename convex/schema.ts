@@ -798,6 +798,7 @@ const schema = defineSchema({
     completionNotes: v.optional(v.string()),
     tags: v.array(v.string()),
     projectId: v.optional(v.id("agentProjects")),
+    attachments: v.optional(v.array(v.id("documents"))),
   })
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])
@@ -897,7 +898,8 @@ const schema = defineSchema({
   })
     .index("orgId", ["orgId"])
     .index("agentId", ["agentId"])
-    .index("orgId_timestamp", ["orgId", "timestamp"]),
+    .index("orgId_timestamp", ["orgId", "timestamp"])
+    .index("taskId", ["taskId"]),
 
   // Agent chat messages (for in-app chat)
   agentChatMessages: defineTable({

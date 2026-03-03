@@ -49,7 +49,6 @@ import {
   Presentation,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
-import { TaskDetailDialog } from '@/components/agents/TaskDetailDialog'
 import siteConfig from '~/site.config'
 
 // ──────────────────────────────────────────────
@@ -682,7 +681,7 @@ function ProjectTasksTab({
   const updateStatus = useMutation(api.agents.updateTaskStatus)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTask, setNewTask] = useState({ title: '', description: '', agentId: '', priority: 'medium' })
-  const [selectedTask, setSelectedTask] = useState<any | null>(null)
+  const navigate = useNavigate()
 
   const handleCreateTask = async () => {
     if (!orgId || !newTask.title.trim()) return
@@ -762,7 +761,7 @@ function ProjectTasksTab({
                 <tr
                   key={task._id}
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={() => setSelectedTask(task)}
+                  onClick={() => navigate({ to: '/dashboard/task/$taskId', params: { taskId: task._id } })}
                 >
                   <td className="px-4 py-2.5">
                     <p className="font-medium truncate max-w-[300px]">{task.title}</p>
@@ -823,16 +822,6 @@ function ProjectTasksTab({
         {' '}for the full Kanban board view.
       </p>
 
-      {/* Task detail dialog */}
-      {orgId && (
-        <TaskDetailDialog
-          task={selectedTask}
-          agents={agents}
-          orgId={orgId}
-          open={!!selectedTask}
-          onOpenChange={(open) => { if (!open) setSelectedTask(null) }}
-        />
-      )}
     </div>
   )
 }
