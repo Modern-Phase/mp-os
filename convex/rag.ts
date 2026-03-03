@@ -10,22 +10,29 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { PROCESSING_STATUS } from "./schema";
 
-// OpenAI configuration for embeddings and processing
+// Embedding config — prefer OpenRouter, fall back to OpenAI direct
+const OPEN_ROUTER = process.env.OPEN_ROUTER;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = "https://api.openai.com/v1";
+const EMBEDDING_API_KEY = OPEN_ROUTER || OPENAI_API_KEY;
+const EMBEDDING_BASE_URL = OPEN_ROUTER
+  ? "https://openrouter.ai/api/v1"
+  : "https://api.openai.com/v1";
+const EMBEDDING_MODEL = OPEN_ROUTER
+  ? "openai/text-embedding-3-small"
+  : "text-embedding-3-small";
 
 // Helper to generate embeddings
 export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  if (!EMBEDDING_API_KEY) throw new Error("OPEN_ROUTER or OPENAI_API_KEY not configured");
 
-  const response = await fetch(`${OPENAI_BASE_URL}/embeddings`, {
+  const response = await fetch(`${EMBEDDING_BASE_URL}/embeddings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${EMBEDDING_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "text-embedding-3-small",
+      model: EMBEDDING_MODEL,
       input: text,
     }),
   });
