@@ -31,3 +31,9 @@ export const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT; // "sandbox" | "produc
 
 // GitHub (optional fallback PAT)
 export const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
+// GitHub webhook verification
+export const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+
+// Loom (transcript extraction)
+export const LOOM_API_KEY = process.env.LOOM_API_KEY;

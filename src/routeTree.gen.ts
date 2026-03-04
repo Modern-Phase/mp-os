@@ -26,12 +26,14 @@ import { Route as AppAuthDashboardLayoutRouteImport } from './routes/_app/_auth/
 import { Route as AppAuthDashboardLayoutIndexRouteImport } from './routes/_app/_auth/dashboard/_layout.index'
 import { Route as AppAuthOnboardingLayoutUsernameRouteImport } from './routes/_app/_auth/onboarding/_layout.username'
 import { Route as AppAuthDashboardLayoutWorkflowsRouteImport } from './routes/_app/_auth/dashboard/_layout.workflows'
+import { Route as AppAuthDashboardLayoutTicketsRouteImport } from './routes/_app/_auth/dashboard/_layout.tickets'
 import { Route as AppAuthDashboardLayoutTemplatesRouteImport } from './routes/_app/_auth/dashboard/_layout.templates'
 import { Route as AppAuthDashboardLayoutSettingsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings'
 import { Route as AppAuthDashboardLayoutSequencesRouteImport } from './routes/_app/_auth/dashboard/_layout.sequences'
 import { Route as AppAuthDashboardLayoutProposalsRouteImport } from './routes/_app/_auth/dashboard/_layout.proposals'
 import { Route as AppAuthDashboardLayoutProjectsRouteImport } from './routes/_app/_auth/dashboard/_layout.projects'
 import { Route as AppAuthDashboardLayoutMissionControlRouteImport } from './routes/_app/_auth/dashboard/_layout.mission-control'
+import { Route as AppAuthDashboardLayoutJobsRouteImport } from './routes/_app/_auth/dashboard/_layout.jobs'
 import { Route as AppAuthDashboardLayoutInvoicesRouteImport } from './routes/_app/_auth/dashboard/_layout.invoices'
 import { Route as AppAuthDashboardLayoutGithubRouteImport } from './routes/_app/_auth/dashboard/_layout.github'
 import { Route as AppAuthDashboardLayoutGdprRouteImport } from './routes/_app/_auth/dashboard/_layout.gdpr'
@@ -39,6 +41,7 @@ import { Route as AppAuthDashboardLayoutFinancesRouteImport } from './routes/_ap
 import { Route as AppAuthDashboardLayoutDocumentsRouteImport } from './routes/_app/_auth/dashboard/_layout.documents'
 import { Route as AppAuthDashboardLayoutCrmRouteImport } from './routes/_app/_auth/dashboard/_layout.crm'
 import { Route as AppAuthDashboardLayoutContractsRouteImport } from './routes/_app/_auth/dashboard/_layout.contracts'
+import { Route as AppAuthDashboardLayoutClientsRouteImport } from './routes/_app/_auth/dashboard/_layout.clients'
 import { Route as AppAuthDashboardLayoutCheckoutRouteImport } from './routes/_app/_auth/dashboard/_layout.checkout'
 import { Route as AppAuthDashboardLayoutAnalyticsRouteImport } from './routes/_app/_auth/dashboard/_layout.analytics'
 import { Route as AppAuthDashboardLayoutAgentChatRouteImport } from './routes/_app/_auth/dashboard/_layout.agent-chat'
@@ -46,6 +49,7 @@ import { Route as AppAuthDashboardLayoutSettingsIndexRouteImport } from './route
 import { Route as AppAuthDashboardLayoutTaskTaskIdRouteImport } from './routes/_app/_auth/dashboard/_layout.task.$taskId'
 import { Route as AppAuthDashboardLayoutSettingsIntegrationsRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.integrations'
 import { Route as AppAuthDashboardLayoutSettingsBillingRouteImport } from './routes/_app/_auth/dashboard/_layout.settings.billing'
+import { Route as AppAuthDashboardLayoutClientsClientIdRouteImport } from './routes/_app/_auth/dashboard/_layout.clients.$clientId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -133,6 +137,12 @@ const AppAuthDashboardLayoutWorkflowsRoute =
     path: '/workflows',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutTicketsRoute =
+  AppAuthDashboardLayoutTicketsRouteImport.update({
+    id: '/tickets',
+    path: '/tickets',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutTemplatesRoute =
   AppAuthDashboardLayoutTemplatesRouteImport.update({
     id: '/templates',
@@ -167,6 +177,12 @@ const AppAuthDashboardLayoutMissionControlRoute =
   AppAuthDashboardLayoutMissionControlRouteImport.update({
     id: '/mission-control',
     path: '/mission-control',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
+const AppAuthDashboardLayoutJobsRoute =
+  AppAuthDashboardLayoutJobsRouteImport.update({
+    id: '/jobs',
+    path: '/jobs',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
 const AppAuthDashboardLayoutInvoicesRoute =
@@ -211,6 +227,12 @@ const AppAuthDashboardLayoutContractsRoute =
     path: '/contracts',
     getParentRoute: () => AppAuthDashboardLayoutRoute,
   } as any)
+const AppAuthDashboardLayoutClientsRoute =
+  AppAuthDashboardLayoutClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
+    getParentRoute: () => AppAuthDashboardLayoutRoute,
+  } as any)
 const AppAuthDashboardLayoutCheckoutRoute =
   AppAuthDashboardLayoutCheckoutRouteImport.update({
     id: '/checkout',
@@ -253,6 +275,12 @@ const AppAuthDashboardLayoutSettingsBillingRoute =
     path: '/billing',
     getParentRoute: () => AppAuthDashboardLayoutSettingsRoute,
   } as any)
+const AppAuthDashboardLayoutClientsClientIdRoute =
+  AppAuthDashboardLayoutClientsClientIdRouteImport.update({
+    id: '/$clientId',
+    path: '/$clientId',
+    getParentRoute: () => AppAuthDashboardLayoutClientsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -270,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/clients': typeof AppAuthDashboardLayoutClientsRouteWithChildren
   '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
@@ -277,15 +306,18 @@ export interface FileRoutesByFullPath {
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/github': typeof AppAuthDashboardLayoutGithubRoute
   '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
+  '/dashboard/jobs': typeof AppAuthDashboardLayoutJobsRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/dashboard/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/dashboard/templates': typeof AppAuthDashboardLayoutTemplatesRoute
+  '/dashboard/tickets': typeof AppAuthDashboardLayoutTicketsRoute
   '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard/': typeof AppAuthDashboardLayoutIndexRoute
+  '/dashboard/clients/$clientId': typeof AppAuthDashboardLayoutClientsClientIdRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/dashboard/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
@@ -305,6 +337,7 @@ export interface FileRoutesByTo {
   '/dashboard/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/dashboard/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/dashboard/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/dashboard/clients': typeof AppAuthDashboardLayoutClientsRouteWithChildren
   '/dashboard/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/dashboard/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/dashboard/documents': typeof AppAuthDashboardLayoutDocumentsRoute
@@ -312,14 +345,17 @@ export interface FileRoutesByTo {
   '/dashboard/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/dashboard/github': typeof AppAuthDashboardLayoutGithubRoute
   '/dashboard/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
+  '/dashboard/jobs': typeof AppAuthDashboardLayoutJobsRoute
   '/dashboard/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/dashboard/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/dashboard/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/dashboard/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/dashboard/templates': typeof AppAuthDashboardLayoutTemplatesRoute
+  '/dashboard/tickets': typeof AppAuthDashboardLayoutTicketsRoute
   '/dashboard/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/onboarding/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/dashboard': typeof AppAuthDashboardLayoutIndexRoute
+  '/dashboard/clients/$clientId': typeof AppAuthDashboardLayoutClientsClientIdRoute
   '/dashboard/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/dashboard/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/dashboard/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
@@ -344,6 +380,7 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/agent-chat': typeof AppAuthDashboardLayoutAgentChatRoute
   '/_app/_auth/dashboard/_layout/analytics': typeof AppAuthDashboardLayoutAnalyticsRoute
   '/_app/_auth/dashboard/_layout/checkout': typeof AppAuthDashboardLayoutCheckoutRoute
+  '/_app/_auth/dashboard/_layout/clients': typeof AppAuthDashboardLayoutClientsRouteWithChildren
   '/_app/_auth/dashboard/_layout/contracts': typeof AppAuthDashboardLayoutContractsRoute
   '/_app/_auth/dashboard/_layout/crm': typeof AppAuthDashboardLayoutCrmRoute
   '/_app/_auth/dashboard/_layout/documents': typeof AppAuthDashboardLayoutDocumentsRoute
@@ -351,15 +388,18 @@ export interface FileRoutesById {
   '/_app/_auth/dashboard/_layout/gdpr': typeof AppAuthDashboardLayoutGdprRoute
   '/_app/_auth/dashboard/_layout/github': typeof AppAuthDashboardLayoutGithubRoute
   '/_app/_auth/dashboard/_layout/invoices': typeof AppAuthDashboardLayoutInvoicesRoute
+  '/_app/_auth/dashboard/_layout/jobs': typeof AppAuthDashboardLayoutJobsRoute
   '/_app/_auth/dashboard/_layout/mission-control': typeof AppAuthDashboardLayoutMissionControlRoute
   '/_app/_auth/dashboard/_layout/projects': typeof AppAuthDashboardLayoutProjectsRoute
   '/_app/_auth/dashboard/_layout/proposals': typeof AppAuthDashboardLayoutProposalsRoute
   '/_app/_auth/dashboard/_layout/sequences': typeof AppAuthDashboardLayoutSequencesRoute
   '/_app/_auth/dashboard/_layout/settings': typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   '/_app/_auth/dashboard/_layout/templates': typeof AppAuthDashboardLayoutTemplatesRoute
+  '/_app/_auth/dashboard/_layout/tickets': typeof AppAuthDashboardLayoutTicketsRoute
   '/_app/_auth/dashboard/_layout/workflows': typeof AppAuthDashboardLayoutWorkflowsRoute
   '/_app/_auth/onboarding/_layout/username': typeof AppAuthOnboardingLayoutUsernameRoute
   '/_app/_auth/dashboard/_layout/': typeof AppAuthDashboardLayoutIndexRoute
+  '/_app/_auth/dashboard/_layout/clients/$clientId': typeof AppAuthDashboardLayoutClientsClientIdRoute
   '/_app/_auth/dashboard/_layout/settings/billing': typeof AppAuthDashboardLayoutSettingsBillingRoute
   '/_app/_auth/dashboard/_layout/settings/integrations': typeof AppAuthDashboardLayoutSettingsIntegrationsRoute
   '/_app/_auth/dashboard/_layout/task/$taskId': typeof AppAuthDashboardLayoutTaskTaskIdRoute
@@ -383,6 +423,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/clients'
     | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
@@ -390,15 +431,18 @@ export interface FileRouteTypes {
     | '/dashboard/gdpr'
     | '/dashboard/github'
     | '/dashboard/invoices'
+    | '/dashboard/jobs'
     | '/dashboard/mission-control'
     | '/dashboard/projects'
     | '/dashboard/proposals'
     | '/dashboard/sequences'
     | '/dashboard/settings'
     | '/dashboard/templates'
+    | '/dashboard/tickets'
     | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard/'
+    | '/dashboard/clients/$clientId'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/integrations'
     | '/dashboard/task/$taskId'
@@ -418,6 +462,7 @@ export interface FileRouteTypes {
     | '/dashboard/agent-chat'
     | '/dashboard/analytics'
     | '/dashboard/checkout'
+    | '/dashboard/clients'
     | '/dashboard/contracts'
     | '/dashboard/crm'
     | '/dashboard/documents'
@@ -425,14 +470,17 @@ export interface FileRouteTypes {
     | '/dashboard/gdpr'
     | '/dashboard/github'
     | '/dashboard/invoices'
+    | '/dashboard/jobs'
     | '/dashboard/mission-control'
     | '/dashboard/projects'
     | '/dashboard/proposals'
     | '/dashboard/sequences'
     | '/dashboard/templates'
+    | '/dashboard/tickets'
     | '/dashboard/workflows'
     | '/onboarding/username'
     | '/dashboard'
+    | '/dashboard/clients/$clientId'
     | '/dashboard/settings/billing'
     | '/dashboard/settings/integrations'
     | '/dashboard/task/$taskId'
@@ -456,6 +504,7 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/agent-chat'
     | '/_app/_auth/dashboard/_layout/analytics'
     | '/_app/_auth/dashboard/_layout/checkout'
+    | '/_app/_auth/dashboard/_layout/clients'
     | '/_app/_auth/dashboard/_layout/contracts'
     | '/_app/_auth/dashboard/_layout/crm'
     | '/_app/_auth/dashboard/_layout/documents'
@@ -463,15 +512,18 @@ export interface FileRouteTypes {
     | '/_app/_auth/dashboard/_layout/gdpr'
     | '/_app/_auth/dashboard/_layout/github'
     | '/_app/_auth/dashboard/_layout/invoices'
+    | '/_app/_auth/dashboard/_layout/jobs'
     | '/_app/_auth/dashboard/_layout/mission-control'
     | '/_app/_auth/dashboard/_layout/projects'
     | '/_app/_auth/dashboard/_layout/proposals'
     | '/_app/_auth/dashboard/_layout/sequences'
     | '/_app/_auth/dashboard/_layout/settings'
     | '/_app/_auth/dashboard/_layout/templates'
+    | '/_app/_auth/dashboard/_layout/tickets'
     | '/_app/_auth/dashboard/_layout/workflows'
     | '/_app/_auth/onboarding/_layout/username'
     | '/_app/_auth/dashboard/_layout/'
+    | '/_app/_auth/dashboard/_layout/clients/$clientId'
     | '/_app/_auth/dashboard/_layout/settings/billing'
     | '/_app/_auth/dashboard/_layout/settings/integrations'
     | '/_app/_auth/dashboard/_layout/task/$taskId'
@@ -608,6 +660,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutWorkflowsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/tickets': {
+      id: '/_app/_auth/dashboard/_layout/tickets'
+      path: '/tickets'
+      fullPath: '/dashboard/tickets'
+      preLoaderRoute: typeof AppAuthDashboardLayoutTicketsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/templates': {
       id: '/_app/_auth/dashboard/_layout/templates'
       path: '/templates'
@@ -648,6 +707,13 @@ declare module '@tanstack/react-router' {
       path: '/mission-control'
       fullPath: '/dashboard/mission-control'
       preLoaderRoute: typeof AppAuthDashboardLayoutMissionControlRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
+    '/_app/_auth/dashboard/_layout/jobs': {
+      id: '/_app/_auth/dashboard/_layout/jobs'
+      path: '/jobs'
+      fullPath: '/dashboard/jobs'
+      preLoaderRoute: typeof AppAuthDashboardLayoutJobsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
     '/_app/_auth/dashboard/_layout/invoices': {
@@ -699,6 +765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutContractsRouteImport
       parentRoute: typeof AppAuthDashboardLayoutRoute
     }
+    '/_app/_auth/dashboard/_layout/clients': {
+      id: '/_app/_auth/dashboard/_layout/clients'
+      path: '/clients'
+      fullPath: '/dashboard/clients'
+      preLoaderRoute: typeof AppAuthDashboardLayoutClientsRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutRoute
+    }
     '/_app/_auth/dashboard/_layout/checkout': {
       id: '/_app/_auth/dashboard/_layout/checkout'
       path: '/checkout'
@@ -748,8 +821,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuthDashboardLayoutSettingsBillingRouteImport
       parentRoute: typeof AppAuthDashboardLayoutSettingsRoute
     }
+    '/_app/_auth/dashboard/_layout/clients/$clientId': {
+      id: '/_app/_auth/dashboard/_layout/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/dashboard/clients/$clientId'
+      preLoaderRoute: typeof AppAuthDashboardLayoutClientsClientIdRouteImport
+      parentRoute: typeof AppAuthDashboardLayoutClientsRoute
+    }
   }
 }
+
+interface AppAuthDashboardLayoutClientsRouteChildren {
+  AppAuthDashboardLayoutClientsClientIdRoute: typeof AppAuthDashboardLayoutClientsClientIdRoute
+}
+
+const AppAuthDashboardLayoutClientsRouteChildren: AppAuthDashboardLayoutClientsRouteChildren =
+  {
+    AppAuthDashboardLayoutClientsClientIdRoute:
+      AppAuthDashboardLayoutClientsClientIdRoute,
+  }
+
+const AppAuthDashboardLayoutClientsRouteWithChildren =
+  AppAuthDashboardLayoutClientsRoute._addFileChildren(
+    AppAuthDashboardLayoutClientsRouteChildren,
+  )
 
 interface AppAuthDashboardLayoutSettingsRouteChildren {
   AppAuthDashboardLayoutSettingsBillingRoute: typeof AppAuthDashboardLayoutSettingsBillingRoute
@@ -776,6 +871,7 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutAgentChatRoute: typeof AppAuthDashboardLayoutAgentChatRoute
   AppAuthDashboardLayoutAnalyticsRoute: typeof AppAuthDashboardLayoutAnalyticsRoute
   AppAuthDashboardLayoutCheckoutRoute: typeof AppAuthDashboardLayoutCheckoutRoute
+  AppAuthDashboardLayoutClientsRoute: typeof AppAuthDashboardLayoutClientsRouteWithChildren
   AppAuthDashboardLayoutContractsRoute: typeof AppAuthDashboardLayoutContractsRoute
   AppAuthDashboardLayoutCrmRoute: typeof AppAuthDashboardLayoutCrmRoute
   AppAuthDashboardLayoutDocumentsRoute: typeof AppAuthDashboardLayoutDocumentsRoute
@@ -783,12 +879,14 @@ interface AppAuthDashboardLayoutRouteChildren {
   AppAuthDashboardLayoutGdprRoute: typeof AppAuthDashboardLayoutGdprRoute
   AppAuthDashboardLayoutGithubRoute: typeof AppAuthDashboardLayoutGithubRoute
   AppAuthDashboardLayoutInvoicesRoute: typeof AppAuthDashboardLayoutInvoicesRoute
+  AppAuthDashboardLayoutJobsRoute: typeof AppAuthDashboardLayoutJobsRoute
   AppAuthDashboardLayoutMissionControlRoute: typeof AppAuthDashboardLayoutMissionControlRoute
   AppAuthDashboardLayoutProjectsRoute: typeof AppAuthDashboardLayoutProjectsRoute
   AppAuthDashboardLayoutProposalsRoute: typeof AppAuthDashboardLayoutProposalsRoute
   AppAuthDashboardLayoutSequencesRoute: typeof AppAuthDashboardLayoutSequencesRoute
   AppAuthDashboardLayoutSettingsRoute: typeof AppAuthDashboardLayoutSettingsRouteWithChildren
   AppAuthDashboardLayoutTemplatesRoute: typeof AppAuthDashboardLayoutTemplatesRoute
+  AppAuthDashboardLayoutTicketsRoute: typeof AppAuthDashboardLayoutTicketsRoute
   AppAuthDashboardLayoutWorkflowsRoute: typeof AppAuthDashboardLayoutWorkflowsRoute
   AppAuthDashboardLayoutIndexRoute: typeof AppAuthDashboardLayoutIndexRoute
   AppAuthDashboardLayoutTaskTaskIdRoute: typeof AppAuthDashboardLayoutTaskTaskIdRoute
@@ -799,6 +897,8 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutAgentChatRoute: AppAuthDashboardLayoutAgentChatRoute,
     AppAuthDashboardLayoutAnalyticsRoute: AppAuthDashboardLayoutAnalyticsRoute,
     AppAuthDashboardLayoutCheckoutRoute: AppAuthDashboardLayoutCheckoutRoute,
+    AppAuthDashboardLayoutClientsRoute:
+      AppAuthDashboardLayoutClientsRouteWithChildren,
     AppAuthDashboardLayoutContractsRoute: AppAuthDashboardLayoutContractsRoute,
     AppAuthDashboardLayoutCrmRoute: AppAuthDashboardLayoutCrmRoute,
     AppAuthDashboardLayoutDocumentsRoute: AppAuthDashboardLayoutDocumentsRoute,
@@ -806,6 +906,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutGdprRoute: AppAuthDashboardLayoutGdprRoute,
     AppAuthDashboardLayoutGithubRoute: AppAuthDashboardLayoutGithubRoute,
     AppAuthDashboardLayoutInvoicesRoute: AppAuthDashboardLayoutInvoicesRoute,
+    AppAuthDashboardLayoutJobsRoute: AppAuthDashboardLayoutJobsRoute,
     AppAuthDashboardLayoutMissionControlRoute:
       AppAuthDashboardLayoutMissionControlRoute,
     AppAuthDashboardLayoutProjectsRoute: AppAuthDashboardLayoutProjectsRoute,
@@ -814,6 +915,7 @@ const AppAuthDashboardLayoutRouteChildren: AppAuthDashboardLayoutRouteChildren =
     AppAuthDashboardLayoutSettingsRoute:
       AppAuthDashboardLayoutSettingsRouteWithChildren,
     AppAuthDashboardLayoutTemplatesRoute: AppAuthDashboardLayoutTemplatesRoute,
+    AppAuthDashboardLayoutTicketsRoute: AppAuthDashboardLayoutTicketsRoute,
     AppAuthDashboardLayoutWorkflowsRoute: AppAuthDashboardLayoutWorkflowsRoute,
     AppAuthDashboardLayoutIndexRoute: AppAuthDashboardLayoutIndexRoute,
     AppAuthDashboardLayoutTaskTaskIdRoute:

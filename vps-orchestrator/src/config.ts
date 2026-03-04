@@ -20,6 +20,10 @@ export const CONFIG = {
   gatewayToken: process.env.OPENCLAW_GATEWAY_TOKEN || "",
   // Device identity for gateway auth (Ed25519 keypair)
   deviceIdentityPath: process.env.OPENCLAW_DEVICE_IDENTITY || "/home/openclaw/.openclaw/identity/device.json",
+  // OpenRouter API key for OpenCode agent jobs
+  openRouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  // OpenCode model override (default: openrouter/anthropic/claude-sonnet-4)
+  openCodeModel: process.env.OPENCODE_MODEL || "",
 } as const;
 
 /** Validate agent ID: lowercase alphanumeric + hyphens, starts with a letter, max 64 chars */

@@ -153,6 +153,70 @@ export const priorityValidator = v.union(
 );
 export type Priority = Infer<typeof priorityValidator>;
 
+// TICKET SYSTEM
+export const TICKET_SOURCES = {
+  MANUAL: "manual",
+  LOOM: "loom",
+  GITHUB: "github",
+} as const;
+
+export const ticketSourceValidator = v.union(
+  v.literal(TICKET_SOURCES.MANUAL),
+  v.literal(TICKET_SOURCES.LOOM),
+  v.literal(TICKET_SOURCES.GITHUB),
+);
+export type TicketSource = Infer<typeof ticketSourceValidator>;
+
+export const TICKET_STATUSES = {
+  OPEN: "open",
+  IN_PROGRESS: "in_progress",
+  WAITING: "waiting",
+  RESOLVED: "resolved",
+  CLOSED: "closed",
+} as const;
+
+export const ticketStatusValidator = v.union(
+  v.literal(TICKET_STATUSES.OPEN),
+  v.literal(TICKET_STATUSES.IN_PROGRESS),
+  v.literal(TICKET_STATUSES.WAITING),
+  v.literal(TICKET_STATUSES.RESOLVED),
+  v.literal(TICKET_STATUSES.CLOSED),
+);
+export type TicketStatus = Infer<typeof ticketStatusValidator>;
+
+// AGENT JOB SYSTEM
+export const AGENT_JOB_STATUSES = {
+  QUEUED: "queued",
+  CLONING: "cloning",
+  WORKING: "working",
+  TESTING: "testing",
+  PR_CREATED: "pr_created",
+  REVISION: "revision",
+  NEEDS_HUMAN: "needs_human",
+  MERGED: "merged",
+  CLOSED: "closed",
+  FAILED: "failed",
+} as const;
+
+export const agentJobStatusValidator = v.union(
+  v.literal(AGENT_JOB_STATUSES.QUEUED),
+  v.literal(AGENT_JOB_STATUSES.CLONING),
+  v.literal(AGENT_JOB_STATUSES.WORKING),
+  v.literal(AGENT_JOB_STATUSES.TESTING),
+  v.literal(AGENT_JOB_STATUSES.PR_CREATED),
+  v.literal(AGENT_JOB_STATUSES.REVISION),
+  v.literal(AGENT_JOB_STATUSES.NEEDS_HUMAN),
+  v.literal(AGENT_JOB_STATUSES.MERGED),
+  v.literal(AGENT_JOB_STATUSES.CLOSED),
+  v.literal(AGENT_JOB_STATUSES.FAILED),
+);
+export type AgentJobStatus = Infer<typeof agentJobStatusValidator>;
+
+export const agentJobTriggerModeValidator = v.union(
+  v.literal("manual"),
+  v.literal("auto"),
+);
+
 // CRM - Company sizes
 export const COMPANY_SIZES = {
   SOLO: "solo",
@@ -268,6 +332,7 @@ export const notificationTypeValidator = v.union(
   v.literal("proposal_rejected"),
   v.literal("contract_sent"),
   v.literal("contract_signed"),
+  v.literal("agent_job"),
 );
 export type NotificationType = Infer<typeof notificationTypeValidator>;
 
@@ -412,6 +477,7 @@ export type TemplateType = Infer<typeof templateTypeValidator>;
 export const integrationProviderValidator = v.union(
   v.literal("quickbooks"),
   v.literal("github"),
+  v.literal("loom"),
 );
 export type IntegrationProvider = Infer<typeof integrationProviderValidator>;
 
@@ -828,6 +894,7 @@ const schema = defineSchema({
     estimatedHours: v.optional(v.number()),
     hourlyRate: v.optional(v.number()),
     createdBy: v.id("users"),
+    autoAssignAgent: v.optional(v.boolean()),
   })
     .index("orgId", ["orgId"])
     .index("orgId_status", ["orgId", "status"]),
@@ -1041,7 +1108,7 @@ const schema = defineSchema({
     title: v.string(),
     body: v.string(),
     read: v.boolean(),
-    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"), v.literal("invoice"), v.literal("proposal"), v.literal("contract"))),
+    resourceType: v.optional(v.union(v.literal("task"), v.literal("lead"), v.literal("message"), v.literal("invoice"), v.literal("proposal"), v.literal("contract"), v.literal("agent_job"))),
     resourceId: v.optional(v.string()),
     agentId: v.optional(agentIdValidator),
     createdAt: v.number(),
@@ -1497,6 +1564,32 @@ const schema = defineSchema({
     .index("orgId", ["orgId"])
     .index("orgId_repoFullName", ["orgId", "repoFullName"]),
 
+  // Tickets (client change requests / issue tracking)
+  tickets: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    description: v.string(),
+    source: ticketSourceValidator,
+    status: ticketStatusValidator,
+    priority: priorityValidator,
+    leadId: v.optional(v.id("crmLeads")),
+    projectId: v.optional(v.id("agentProjects")),
+    githubRepoId: v.optional(v.id("githubRepos")),
+    githubIssueNumber: v.optional(v.number()),
+    githubIssueUrl: v.optional(v.string()),
+    loomUrl: v.optional(v.string()),
+    loomTranscript: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    assignedTo: v.optional(v.id("users")),
+    createdBy: v.id("users"),
+    resolvedAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("leadId", ["leadId"])
+    .index("projectId", ["projectId"]),
+
   // VPS instance tracking (live state synced from orchestrator)
   vpsInstances: defineTable({
     agentId: v.string(),
@@ -1518,6 +1611,52 @@ const schema = defineSchema({
     lastSyncedAt: v.number(),
   })
     .index("agentId", ["agentId"]),
+
+  // Agent jobs (autonomous GitHub issue resolution)
+  agentJobs: defineTable({
+    orgId: v.id("organizations"),
+    ticketId: v.optional(v.id("tickets")),
+    githubIssueUrl: v.string(),
+    githubIssueNumber: v.number(),
+    githubIssueTitle: v.string(),
+    githubIssueBody: v.optional(v.string()),
+    repoFullName: v.string(),
+    defaultBranch: v.string(),
+    branch: v.string(),
+    status: agentJobStatusValidator,
+    sessionId: v.optional(v.string()),
+    runId: v.optional(v.string()),
+    prUrl: v.optional(v.string()),
+    prNumber: v.optional(v.number()),
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    triggerMode: agentJobTriggerModeValidator,
+    triggeredBy: v.id("users"),
+    tokenUsage: v.optional(
+      v.object({
+        inputTokens: v.number(),
+        outputTokens: v.number(),
+        totalCost: v.optional(v.number()),
+      }),
+    ),
+    logs: v.optional(
+      v.array(
+        v.object({
+          timestamp: v.number(),
+          level: v.union(v.literal("info"), v.literal("warn"), v.literal("error")),
+          message: v.string(),
+        }),
+      ),
+    ),
+    errorMessage: v.optional(v.string()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    lastActivityAt: v.optional(v.number()),
+  })
+    .index("orgId", ["orgId"])
+    .index("orgId_status", ["orgId", "status"])
+    .index("repoFullName_githubIssueNumber", ["repoFullName", "githubIssueNumber"])
+    .index("sessionId", ["sessionId"]),
 });
 
 export default schema;

@@ -18,6 +18,8 @@ import {
   DollarSign,
   MessageSquare,
   LayoutTemplate,
+  Ticket,
+  Building2,
 } from "lucide-react";
 import { cn, useSignOut } from "@/utils/misc";
 import { ThemeSwitcher } from "@/ui/theme-switcher";
@@ -54,6 +56,7 @@ const navGroups: NavGroup[] = [
     label: "Management",
     items: [
       { label: "Projects", path: "/dashboard/projects", icon: FolderKanban },
+      { label: "Clients", path: "/dashboard/clients", icon: Building2 },
       { label: "Documents", path: "/dashboard/documents", icon: FileText },
       { label: "GitHub", path: "/dashboard/github", icon: GitBranch },
     ],
@@ -62,6 +65,7 @@ const navGroups: NavGroup[] = [
     label: "Business",
     items: [
       { label: "CRM", path: "/dashboard/crm", icon: Users },
+      { label: "Tickets", path: "/dashboard/tickets", icon: Ticket },
       { label: "Finances", path: "/dashboard/finances", icon: DollarSign },
       { label: "Invoices", path: "/dashboard/invoices", icon: Receipt },
       { label: "Proposals", path: "/dashboard/proposals", icon: FileText },
@@ -80,6 +84,7 @@ const navGroups: NavGroup[] = [
     label: "AI",
     items: [
       { label: "Agent Chat", path: "/dashboard/agent-chat", icon: Bot },
+      { label: "Agent Jobs", path: "/dashboard/jobs", icon: Bot },
       { label: "AI Chat", path: "/chat", icon: MessageSquare },
     ],
   },

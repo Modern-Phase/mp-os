@@ -47,8 +47,10 @@ import {
   FileBarChart,
   Package,
   Presentation,
+  Ticket,
 } from 'lucide-react'
 import { cn } from '@/utils/misc'
+import { ProjectTicketsTab } from '@/components/tickets/ProjectTicketsTab'
 import siteConfig from '~/site.config'
 
 // ──────────────────────────────────────────────
@@ -287,6 +289,7 @@ function ProjectsPage() {
             projectId={selectedProjectId}
             agents={agents || []}
             orgId={orgId}
+            allProjects={projects || []}
             onDeleted={() => navigate({ search: {} as any, replace: true })}
           />
         ) : (
@@ -389,14 +392,18 @@ function ProjectDetail({
   projectId,
   agents,
   orgId,
+  allProjects,
   onDeleted,
 }: {
   projectId: Id<'agentProjects'>
   agents: any[]
   orgId: Id<'organizations'> | undefined
+  allProjects: any[]
   onDeleted?: () => void
 }) {
   const overview = useConvexQuery(api.agents.getProjectOverview, { projectId })
+  const trackedRepos = useConvexQuery(api.github.getTrackedRepos, orgId ? { orgId } : 'skip')
+  const linkRepoToProject = useMutation(api.github.linkRepoToProject)
   const deleteProjectMut = useMutation(api.agents.deleteProject)
   const [activeTab, setActiveTab] = useState('tasks')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -428,6 +435,9 @@ function ProjectDetail({
   const assignedAgents = (project.agents || [])
     .map((id: string) => agents.find((a: any) => a.agentId === id))
     .filter(Boolean)
+
+  const linkedRepos = (trackedRepos || []).filter((r: any) => r.linkedProjectId === projectId)
+  const unlinkedRepos = (trackedRepos || []).filter((r: any) => !r.linkedProjectId || r.linkedProjectId !== projectId)
 
   const progress = computeProgress(tasks)
   const now = Date.now()
@@ -544,16 +554,18 @@ function ProjectDetail({
 
       {/* Client Portal cards */}
       <div className="grid grid-cols-4 gap-3 px-6 py-3 border-b bg-white dark:bg-gray-950 shrink-0">
-        <Link
-          to="/dashboard/github"
-          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group"
+        <button
+          onClick={() => setActiveTab('github')}
+          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group text-left"
         >
           <GitBranch className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0" />
           <div className="min-w-0">
             <p className="text-xs font-medium truncate">GitHub</p>
-            <p className="text-[10px] text-muted-foreground">Repos & activity</p>
+            <p className="text-[10px] text-muted-foreground">
+              {linkedRepos.length > 0 ? `${linkedRepos.length} repo${linkedRepos.length !== 1 ? 's' : ''} linked` : 'No repos linked'}
+            </p>
           </div>
-        </Link>
+        </button>
         <button
           onClick={() => setActiveTab('activity')}
           className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors group text-left"
@@ -605,6 +617,14 @@ function ProjectDetail({
               <Activity className="w-4 h-4" />
               Activity
             </TabsTrigger>
+            <TabsTrigger value="tickets" className="gap-1.5">
+              <Ticket className="w-4 h-4" />
+              Tickets
+            </TabsTrigger>
+            <TabsTrigger value="github" className="gap-1.5">
+              <GitBranch className="w-4 h-4" />
+              GitHub
+            </TabsTrigger>
             {linkedLead && (
               <TabsTrigger value="crm" className="gap-1.5">
                 <ExternalLink className="w-4 h-4" />
@@ -630,6 +650,25 @@ function ProjectDetail({
 
           <TabsContent value="activity" className="px-6 py-4">
             <ActivityTab activity={activity} agents={agents} />
+          </TabsContent>
+
+          <TabsContent value="tickets" className="px-6 py-4">
+            {orgId && <ProjectTicketsTab orgId={orgId} projectId={projectId} />}
+          </TabsContent>
+
+          <TabsContent value="github" className="px-6 py-4">
+            <ProjectGitHubTab
+              linkedRepos={linkedRepos}
+              unlinkedRepos={unlinkedRepos}
+              allProjects={allProjects}
+              projectId={projectId}
+              onLink={async (repoId) => {
+                await linkRepoToProject({ repoId, projectId })
+              }}
+              onUnlink={async (repoId) => {
+                await linkRepoToProject({ repoId, projectId: undefined })
+              }}
+            />
           </TabsContent>
 
           {linkedLead && (
@@ -1247,5 +1286,162 @@ function NewProjectDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ──────────────────────────────────────────────
+// GitHub Tab — link/unlink repos to project
+// ──────────────────────────────────────────────
+
+function ProjectGitHubTab({
+  linkedRepos,
+  unlinkedRepos,
+  allProjects,
+  projectId,
+  onLink,
+  onUnlink,
+}: {
+  linkedRepos: any[]
+  unlinkedRepos: any[]
+  allProjects: any[]
+  projectId: Id<'agentProjects'>
+  onLink: (repoId: Id<'githubRepos'>) => Promise<void>
+  onUnlink: (repoId: Id<'githubRepos'>) => Promise<void>
+}) {
+  const [linking, setLinking] = useState<string | null>(null)
+
+  const handleLink = async (repoId: Id<'githubRepos'>) => {
+    setLinking(repoId)
+    try { await onLink(repoId) } finally { setLinking(null) }
+  }
+
+  const handleUnlink = async (repoId: Id<'githubRepos'>) => {
+    setLinking(repoId)
+    try { await onUnlink(repoId) } finally { setLinking(null) }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Linked repos */}
+      <div>
+        <h3 className="text-sm font-medium text-foreground mb-2">
+          Linked Repositories ({linkedRepos.length})
+        </h3>
+        {linkedRepos.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            No repos linked to this project yet. Link one below.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {linkedRepos.map((repo: any) => (
+              <div
+                key={repo._id}
+                className="flex items-center justify-between rounded-lg px-3 py-2.5 border border-border"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <a
+                    href={repo.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-foreground hover:text-primary truncate"
+                  >
+                    {repo.repoFullName}
+                  </a>
+                  {repo.isPrivate && (
+                    <Badge variant="outline" className="text-[10px]">Private</Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-red-500 shrink-0"
+                  disabled={linking === repo._id}
+                  onClick={() => handleUnlink(repo._id)}
+                >
+                  {linking === repo._id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    'Unlink'
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Available repos to link */}
+      {unlinkedRepos.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-foreground mb-2">
+            Available Repositories
+          </h3>
+          <p className="text-xs text-muted-foreground mb-2">
+            Tracked repos not linked to this project. Go to GitHub settings to add more.
+          </p>
+          <div className="space-y-1">
+            {unlinkedRepos.map((repo: any) => {
+              const linkedToOther = repo.linkedProjectId && repo.linkedProjectId !== projectId
+              const otherProject = linkedToOther
+                ? allProjects.find((p: any) => p._id === repo.linkedProjectId)
+                : null
+              return (
+                <div
+                  key={repo._id}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors",
+                    linkedToOther ? "opacity-50" : "hover:bg-muted/50",
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-muted-foreground truncate">
+                      {repo.repoFullName}
+                    </span>
+                    {repo.isPrivate && (
+                      <Badge variant="outline" className="text-[10px]">Private</Badge>
+                    )}
+                    {linkedToOther && otherProject && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Linked to {otherProject.name}
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs shrink-0"
+                    disabled={linking === repo._id || !!linkedToOther}
+                    onClick={() => handleLink(repo._id)}
+                  >
+                    {linking === repo._id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : linkedToOther ? (
+                      'In Use'
+                    ) : (
+                      'Link to Project'
+                    )}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {linkedRepos.length === 0 && unlinkedRepos.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">No tracked repos found</p>
+          <p className="text-xs mt-1">
+            Connect GitHub and track repos in the{' '}
+            <Link to="/dashboard/github" className="text-primary hover:underline">
+              GitHub settings
+            </Link>
+          </p>
+        </div>
+      )}
+    </div>
   )
 }

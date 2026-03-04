@@ -181,13 +181,13 @@ function GitHubPage() {
 
   if (!isConnected) {
     return (
-      <div className="flex-1 space-y-6">
+      <div className="p-4 lg:p-6 space-y-6">
         <div>
-          <h2 className="text-xl font-semibold">GitHub</h2>
+          <h1 className="text-2xl font-semibold text-foreground">GitHub</h1>
           <p className="text-sm text-muted-foreground">Connect your GitHub account to browse repos, commits, PRs, and issues</p>
         </div>
 
-        <div className="max-w-lg border rounded-lg p-6 space-y-4">
+        <div className="max-w-lg border border-border rounded-lg p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <GitBranch className="h-5 w-5 text-gray-700 dark:text-gray-300" />
@@ -235,10 +235,10 @@ function GitHubPage() {
   // ─── Connected — main layout ───────────────────────────────
 
   return (
-    <div className="flex-1 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col overflow-hidden p-4 lg:p-6">
+      <div className="flex items-center justify-between shrink-0 pb-4">
         <div>
-          <h2 className="text-xl font-semibold">GitHub</h2>
+          <h1 className="text-2xl font-semibold text-foreground">GitHub</h1>
           <p className="text-sm text-muted-foreground">
             Connected {connection?.connectedAt ? `on ${new Date(connection.connectedAt).toLocaleDateString()}` : ""}
           </p>
@@ -255,7 +255,7 @@ function GitHubPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-300">
+        <div className="rounded-lg bg-red-50 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-300 shrink-0 mb-4">
           {error}
           <button className="ml-2 underline" onClick={() => setError(null)}>dismiss</button>
         </div>
@@ -263,17 +263,19 @@ function GitHubPage() {
 
       {/* Repo browser modal */}
       {browseRepos && (
-        <RepoBrowser
-          repos={browseRepos}
-          isTracked={isRepoTracked}
-          onTrack={handleTrackRepo}
-          onClose={() => setBrowseRepos(null)}
-        />
+        <div className="shrink-0 mb-4">
+          <RepoBrowser
+            repos={browseRepos}
+            isTracked={isRepoTracked}
+            onTrack={handleTrackRepo}
+            onClose={() => setBrowseRepos(null)}
+          />
+        </div>
       )}
 
-      <div className="flex gap-6 min-h-[500px]">
+      <div className="flex gap-4 flex-1 min-h-0">
         {/* Sidebar — tracked repos */}
-        <div className="w-64 shrink-0 border rounded-lg p-3 space-y-1 overflow-y-auto">
+        <div className="w-64 shrink-0 border border-border rounded-lg p-3 space-y-1 overflow-y-auto">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 px-2 pb-2">
             Tracked Repos ({trackedRepos?.length || 0})
           </p>
@@ -315,7 +317,7 @@ function GitHubPage() {
         </div>
 
         {/* Main content — repo detail */}
-        <div className="flex-1 border rounded-lg overflow-hidden">
+        <div className="flex-1 border border-border rounded-lg overflow-hidden">
           {!selectedRepo ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center space-y-2">
@@ -419,7 +421,7 @@ function RepoBrowser({
     .filter(([, list]) => list.length > 0);
 
   return (
-    <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+    <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/30">
       <div className="flex items-center justify-between">
         <h3 className="font-medium">Browse Repos</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>

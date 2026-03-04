@@ -8,6 +8,7 @@ import soulRoutes from "./routes/soul";
 import sessionRoutes from "./routes/sessions";
 import logRoutes from "./routes/logs";
 import workspaceRoutes from "./routes/workspace";
+import jobRoutes from "./routes/jobs";
 import { CONFIG } from "./config";
 import { connect as connectGateway, disconnect as disconnectGateway } from "./services/gateway-ws";
 
@@ -46,7 +47,10 @@ app.route("/api", healthRoutes);
 
 // All other routes require API key
 app.use("/api/instances/*", apiKeyAuth);
+app.use("/api/jobs", apiKeyAuth);
+app.use("/api/jobs/*", apiKeyAuth);
 app.route("/api", instanceRoutes);
+app.route("/api", jobRoutes);
 app.route("/api", soulRoutes);
 app.route("/api", sessionRoutes);
 app.route("/api", logRoutes);
