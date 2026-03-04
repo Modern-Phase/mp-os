@@ -206,14 +206,14 @@ function ProjectsPage() {
 
   if (!currentUser) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex overflow-hidden">
+    <div className="h-full flex overflow-hidden">
       {/* Left Sidebar */}
       <div className="w-80 border-r flex flex-col bg-white dark:bg-gray-950 shrink-0">
         <div className="p-4 border-b space-y-3 shrink-0">
@@ -645,7 +645,7 @@ function ProjectDetail({
           </TabsContent>
 
           <TabsContent value="agents" className="px-6 py-4">
-            <AgentsTab agents={assignedAgents} tasks={tasks} />
+            <AgentsTab agents={assignedAgents} tasks={tasks} allAgents={agents} projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="activity" className="px-6 py-4">
@@ -937,65 +937,168 @@ function PriorityBadge({ priority }: { priority: string }) {
 // Agents Tab
 // ──────────────────────────────────────────────
 
-function AgentsTab({ agents, tasks }: { agents: any[]; tasks: any[] }) {
-  if (agents.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Users className="w-10 h-10 text-muted-foreground/30 mb-3" />
-        <p className="text-sm font-medium text-muted-foreground/70">No agents assigned</p>
-      </div>
+function AgentsTab({
+  agents,
+  tasks,
+  allAgents,
+  projectId,
+}: {
+  agents: any[]
+  tasks: any[]
+  allAgents: any[]
+  projectId: Id<'agentProjects'>
+}) {
+  const updateProject = useMutation(api.agents.updateProject)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+
+  const openAssignDialog = () => {
+    setSelectedIds(agents.map((a: any) => a.agentId))
+    setAssignOpen(true)
+  }
+
+  const toggleAgent = (agentId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId],
     )
   }
 
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateProject({ projectId, agents: selectedIds as any })
+      setAssignOpen(false)
+    } catch (err) {
+      console.error('Failed to assign agents:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {agents.map((agent: any) => {
-        const agentTasks = tasks.filter((t: any) => t.agentId === agent.agentId)
-        const activeTasks = agentTasks.filter((t: any) => t.status === 'in_progress')
-        const doneTasks = agentTasks.filter((t: any) => t.status === 'done')
+    <>
+      {agents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64">
+          <Users className="w-10 h-10 text-muted-foreground/30 mb-3" />
+          <p className="text-sm font-medium text-muted-foreground/70 mb-3">No agents assigned</p>
+          <Button size="sm" variant="outline" onClick={openAssignDialog}>
+            <Plus className="w-4 h-4 mr-1.5" />
+            Assign Agent
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={openAssignDialog}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Assign Agent
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {agents.map((agent: any) => {
+              const agentTasks = tasks.filter((t: any) => t.agentId === agent.agentId)
+              const activeTasks = agentTasks.filter((t: any) => t.status === 'in_progress')
+              const doneTasks = agentTasks.filter((t: any) => t.status === 'done')
 
-        return (
-          <Card key={agent.agentId} className="shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <span
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                  style={{ backgroundColor: `${agent.color}15` }}
+              return (
+                <Card key={agent.agentId} className="shadow-none">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                        style={{ backgroundColor: `${agent.color}15` }}
+                      >
+                        {agent.emoji}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-sm" style={{ color: agent.color }}>{agent.name}</p>
+                        <p className="text-xs text-muted-foreground">{agent.role}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total tasks</span>
+                        <span className="font-medium">{agentTasks.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Active</span>
+                        <span className="font-medium text-amber-500">{activeTasks.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Completed</span>
+                        <span className="font-medium text-green-500">{doneTasks.length}</span>
+                      </div>
+                    </div>
+
+                    {activeTasks.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Current Task</p>
+                        <p className="text-xs font-medium truncate">{activeTasks[0].title}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Assign Agent Dialog */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Agents</DialogTitle>
+            <DialogDescription>Select which agents to assign to this project.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 max-h-64 overflow-y-auto py-2">
+            {allAgents.map((agent: any) => {
+              const isSelected = selectedIds.includes(agent.agentId)
+              return (
+                <button
+                  key={agent.agentId}
+                  type="button"
+                  onClick={() => toggleAgent(agent.agentId)}
+                  className={cn(
+                    'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
+                    isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/50',
+                  )}
                 >
-                  {agent.emoji}
-                </span>
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: agent.color }}>{agent.name}</p>
-                  <p className="text-xs text-muted-foreground">{agent.role}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total tasks</span>
-                  <span className="font-medium">{agentTasks.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Active</span>
-                  <span className="font-medium text-amber-500">{activeTasks.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Completed</span>
-                  <span className="font-medium text-green-500">{doneTasks.length}</span>
-                </div>
-              </div>
-
-              {activeTasks.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Current Task</p>
-                  <p className="text-xs font-medium truncate">{activeTasks[0].title}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )
-      })}
-    </div>
+                  <span
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0"
+                    style={{ backgroundColor: `${agent.color}15` }}
+                  >
+                    {agent.emoji}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" style={{ color: agent.color }}>{agent.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{agent.role}</p>
+                  </div>
+                  <div className={cn(
+                    'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                    isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30',
+                  )}>
+                    {isSelected && <CheckCircle2 className="w-3 h-3 text-primary-foreground" />}
+                  </div>
+                </button>
+              )
+            })}
+            {allAgents.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No agents available. Create agents first.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
