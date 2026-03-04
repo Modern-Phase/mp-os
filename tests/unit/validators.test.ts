@@ -1,43 +1,31 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
+import { username as usernameValidator } from '@/utils/validators';
 
 /**
  * Unit tests for validation logic
  * Tests input validation for forms and API endpoints
  */
 
-// Username validator (from app.ts)
-const usernameValidator = z.string().min(3).max(20).regex(/^[a-zA-Z0-9]+$/);
-
-function validateUsername(username: string): { valid: boolean; error?: string } {
-  try {
-    usernameValidator.parse(username);
-    return { valid: true };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const firstError = error.issues?.[0];
-      return { valid: false, error: firstError?.message || 'Validation failed' };
-    }
-    return { valid: false, error: 'Unknown validation error' };
-  }
+function validateUsername(input: string): { valid: boolean; result?: string; error?: string } {
+  const parsed = usernameValidator.safeParse(input);
+  if (parsed.success) return { valid: true, result: parsed.data };
+  return { valid: false, error: parsed.error.issues[0]?.message };
 }
 
 describe('Username Validation', () => {
   it('should accept valid usernames', () => {
     expect(validateUsername('john123').valid).toBe(true);
     expect(validateUsername('user').valid).toBe(true);
-    expect(validateUsername('Test123').valid).toBe(true);
     expect(validateUsername('abc').valid).toBe(true); // Minimum 3 chars
   });
 
   it('should reject too short usernames', () => {
-    const result = validateUsername('ab');
-    expect(result.valid).toBe(false);
+    expect(validateUsername('ab').valid).toBe(false);
   });
 
   it('should reject too long usernames', () => {
-    const result = validateUsername('a'.repeat(21));
-    expect(result.valid).toBe(false);
+    expect(validateUsername('a'.repeat(21)).valid).toBe(false);
   });
 
   it('should reject usernames with special characters', () => {
@@ -52,9 +40,24 @@ describe('Username Validation', () => {
     expect(validateUsername('').valid).toBe(false);
   });
 
-  it('should reject username with only numbers', () => {
-    // This is actually valid per the regex, but we might want to change this
+  it('should accept username with only numbers', () => {
     expect(validateUsername('123456').valid).toBe(true);
+  });
+
+  // Transform tests — the real validator has .toLowerCase() and .trim()
+  it('should lowercase the output', () => {
+    const { result } = validateUsername('TestUser');
+    expect(result).toBe('testuser');
+  });
+
+  it('should trim whitespace', () => {
+    const { result } = validateUsername('  hello  ');
+    expect(result).toBe('hello');
+  });
+
+  it('should apply both trim and lowercase', () => {
+    const { result } = validateUsername('  JohnDoe  ');
+    expect(result).toBe('johndoe');
   });
 });
 
